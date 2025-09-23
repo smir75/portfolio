@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* plein écran & fond noir partout */
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: #0b1220; /* noir espace */
+  color: #e2e8f0;
+  overflow: hidden; /* pas de scroll */
+}
