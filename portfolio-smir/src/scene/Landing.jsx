@@ -353,10 +353,9 @@ export default function Landing({ onEnter }) {
               lineHeight: 1.5,
             }}
           >
-            Portfolio by <strong>M. Sagar</strong> — explore a handcrafted moon-world with stations,
-            satellites and an interactive HUD.
+            Créé par <strong> M. Sagar </strong> — Éxpédition sur une lune sculptée à la main, entre stations, satellites et HUD immersif.
             <br />
-            Press{" "}
+            Appuie sur {" "}
             <kbd
               style={{
                 padding: "2px 6px",
@@ -366,21 +365,21 @@ export default function Landing({ onEnter }) {
                 fontSize: "0.9em",
               }}
             >
-              Enter
+              Entrée
             </kbd>{" "}
-            or click Enter.
+            ou clique sur Enter.
           </p>
 
           <div style={{ marginTop: 12 }}>
             <button
               onClick={handleEnter}
               className="btn-glass"
-              aria-label="Enter portfolio"
+              aria-label="Entrée"
               autoFocus
               disabled={launching}
               style={{ pointerEvents: "auto" }}
             >
-              {launching ? "Launching…" : "Enter"}
+              {launching ? "Launching…" : "Entrée"}
             </button>
           </div>
 
