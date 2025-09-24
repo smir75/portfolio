@@ -273,37 +273,43 @@ export default function Landing({ onEnter }) {
         <Canvas
           {...canvasConfig}
           onCreated={({ gl }) => {
-            gl.setClearColor(new THREE.Color(0, 0, 0), 0);
-            gl.outputColorSpace = THREE.SRGBColorSpace;
-            gl.toneMapping = THREE.ACESFilmicToneMapping;
-            gl.toneMappingExposure = 1.0;
+  gl.setClearColor(new THREE.Color(0, 0, 0), 0);
+  gl.outputColorSpace = THREE.SRGBColorSpace;
+  gl.toneMapping = THREE.ACESFilmicToneMapping;
+  gl.toneMappingExposure = 1.0;
 
-            // ✅ Récupérer le contexte WebGL depuis le renderer (fallbacks sûrs)
-            const ctx =
-              (typeof gl.getContext === "function" && gl.getContext()) ||
-              gl.domElement?.getContext?.("webgl2") ||
-              gl.domElement?.getContext?.("webgl") ||
-              gl.domElement?.getContext?.("experimental-webgl");
+  const canvas = gl.domElement;
 
-            if (ctx) {
-              const dbg = ctx.getExtension("WEBGL_debug_renderer_info");
-              if (dbg) {
-                const vendor = ctx.getParameter(dbg.UNMASKED_VENDOR_WEBGL);
-                const renderer = ctx.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
-                console.log("[WebGL] GPU:", vendor, "-", renderer);
-              }
-              // Gestion context lost/restored
-              const onLost = (e) => {
-                e.preventDefault();
-                console.warn("Landing: WebGL context lost");
-              };
-              const onRestored = () => {
-                console.warn("Landing: WebGL context restored");
-              };
-              ctx.canvas?.addEventListener?.("webglcontextlost", onLost, { passive: false });
-              ctx.canvas?.addEventListener?.("webglcontextrestored", onRestored, { passive: true });
-            }
-          }}
+  // (optionnel) debug GPU — décommente si besoin de logs
+  // const info = gl.getExtension?.("WEBGL_debug_renderer_info");
+  // if (info) {
+  //   console.log(
+  //     "[WebGL] GPU:",
+  //     gl.getParameter(info.UNMASKED_VENDOR_WEBGL),
+  //     "-",
+  //     gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
+  //   );
+  // }
+
+  // On avale l'event en capture → pas de log "Context Lost."
+  const onLostCapture = (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    // pas de remount ici : le landing se ferme très vite de toute façon
+  };
+  const onRestored = () => {
+    try { gl.resetState(); } catch {}
+  };
+
+  canvas.addEventListener("webglcontextlost", onLostCapture, { capture: true, passive: false });
+  canvas.addEventListener("webglcontextrestored", onRestored, { passive: true });
+
+  // cleanup
+  return () => {
+    canvas.removeEventListener("webglcontextlost", onLostCapture, { capture: true });
+    canvas.removeEventListener("webglcontextrestored", onRestored);
+  };
+}}
         >
           <ambientLight intensity={0.4} />
           <directionalLight position={[2, 3, 4]} intensity={0.9} castShadow={false} />

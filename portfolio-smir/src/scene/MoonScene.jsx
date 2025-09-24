@@ -99,46 +99,55 @@ export default function MoonScene() {
 
   const lostOnceRef = useRef(false); // empêche remounts en boucle en dev
 
-  const onCanvasCreated = useCallback(({ camera, gl }) => {
-    camera.lookAt(0, 0, 0);
+ const onCanvasCreated = useCallback(({ camera, gl }) => {
+  camera.lookAt(0, 0, 0);
 
-    gl.setClearColor("#050a16", 1);
-    gl.shadowMap.enabled = false;
-    gl.domElement.style.pointerEvents = "auto";
+  gl.setClearColor("#050a16", 1);
+  gl.shadowMap.enabled = false;
+  gl.domElement.style.pointerEvents = "auto";
 
-    gl.outputColorSpace = THREE.SRGBColorSpace;
-    gl.toneMapping = THREE.ACESFilmicToneMapping;
-    gl.toneMappingExposure = 1.0;
+  // Qualité couleur
+  gl.outputColorSpace = THREE.SRGBColorSpace;
+  gl.toneMapping = THREE.ACESFilmicToneMapping;
+  gl.toneMappingExposure = 1.0;
 
-    // Contexte WebGL pour events + cleanup propre
-    const ctx =
-      (typeof gl.getContext === "function" && gl.getContext()) ||
-      gl.domElement?.getContext?.("webgl2") ||
-      gl.domElement?.getContext?.("webgl") ||
-      gl.domElement?.getContext?.("experimental-webgl");
+  const canvas = gl.domElement;
 
-    if (!ctx) return;
+  // (optionnel) debug GPU — décommente si tu veux voir le vendor/renderer
+  // const info = gl.getExtension?.("WEBGL_debug_renderer_info");
+  // if (info) {
+  //   console.log(
+  //     "[WebGL] GPU:",
+  //     gl.getParameter(info.UNMASKED_VENDOR_WEBGL),
+  //     "-",
+  //     gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
+  //   );
+  // }
 
-    const onLost = (e) => {
-      e.preventDefault();
-      if (lostOnceRef.current) return;
-      lostOnceRef.current = true;
-      // Remount unique en dev
-      setTimeout(() => setCanvasKey((k) => k + 1), 0);
-    };
-    const onRestored = () => {
-      try { gl.resetState(); } catch {}
-    };
+  // ⚠️ Capture AVANT Three : pas de "Context Lost." dans la console
+  const onLostCapture = (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation(); // coupe le handler interne de Three (et donc le log)
+    if (lostOnceRef.current) return;
+    lostOnceRef.current = true;
+    // Remount unique (utile en dev pour repartir proprement)
+    setTimeout(() => setCanvasKey((k) => k + 1), 0);
+  };
 
-    ctx.canvas?.addEventListener?.("webglcontextlost", onLost, { passive: false });
-    ctx.canvas?.addEventListener?.("webglcontextrestored", onRestored, { passive: true });
+  const onRestored = () => {
+    try { gl.resetState(); } catch {}
+  };
 
-    // cleanup à l’unmount
-    return () => {
-      ctx.canvas?.removeEventListener?.("webglcontextlost", onLost);
-      ctx.canvas?.removeEventListener?.("webglcontextrestored", onRestored);
-    };
-  }, []);
+  canvas.addEventListener("webglcontextlost", onLostCapture, { capture: true, passive: false });
+  canvas.addEventListener("webglcontextrestored", onRestored, { passive: true });
+
+  // ✅ cleanup propre à l’unmount
+  return () => {
+    canvas.removeEventListener("webglcontextlost", onLostCapture, { capture: true });
+    canvas.removeEventListener("webglcontextrestored", onRestored);
+  };
+}, []);
+
 
   const handleModalClose = useCallback(() => setModal({ open: false, id: null }), []);
   const handleNavTarget = useCallback((id) => setNavTarget(id), []);
