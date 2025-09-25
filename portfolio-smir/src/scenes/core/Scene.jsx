@@ -1,31 +1,41 @@
+// src/scenes/core/Scene.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+
 import SpaceDecor from "@/scenes/core/SpaceDecor";
 import FailSafeLight from "@/scenes/core/FailSafeLight";
 import SunMoonCycle from "@/scenes/sky/SunMoonCycle";
 import Nebulae from "@/scenes/sky/Nebulae";
 import FlybyShips from "@/scenes/sky/FlybyShips";
+
 import Moon from "@/scenes/terrain/Moon";
 import Rocks from "@/scenes/terrain/Rocks";
 import SurfaceParticles from "@/scenes/terrain/SurfaceParticles";
+
 import AsteroidBelt from "@/scenes/belt/AsteroidBelt";
 import Satellites from "@/scenes/orbit/Satellites";
+
 import Stations from "@/scenes/stations/Stations";
 import buildStations from "@/scenes/stations/buildStations";
+
 import Dust from "@/scenes/actors/Dust";
 import Astronaut from "@/scenes/actors/Astronaut";
+
 import Rivers from "@/scenes/cities/Rivers";
 import Settlements from "@/scenes/cities/Settlements";
+
 import ClickAim from "@/scenes/nav/ClickAim";
 import CameraRig from "@/scenes/nav/CameraRig";
+
 import { clamp, angleBetween } from "@/utils/math3d";
+import useInput from "@/hooks/useInput";
 
 import {
-ACCEL, DAMP, MAX_SPEED, STEER, 
-JUMP_V, GRAV , ALT_DAMP, 
-ROCK_COUNT, SURF_PARTICLES, BELT_PARTS , SAT_COUNT,
-ENTER_OPEN,
+  ACCEL, DAMP, MAX_SPEED, STEER,
+  JUMP_V, GRAV, ALT_DAMP,
+  ROCK_COUNT, SURF_PARTICLES, BELT_PARTS, SAT_COUNT,
+  ENTER_OPEN,
 } from "@/constants/space";
 
 export default function Scene({
@@ -39,8 +49,8 @@ export default function Scene({
   worldQuatRef,
   zoomRef,
 }) {
-  // input
-  const input = useSimpleInput();
+  // input clavier centralisé
+  const input = useInput();
 
   // orientation et cible
   const qWorldRef = useRef(new THREE.Quaternion());
@@ -52,7 +62,7 @@ export default function Scene({
   const spinSpeed = 0.02;
   const spinYRef = useRef(0);      // exposé pour corriger le clic
 
-  // etats dynamiques
+  // états dynamiques
   const vy = useRef(0), vx = useRef(0);
   const [alt, setAlt] = useState(0);
   const vAlt = useRef(0);
@@ -60,13 +70,15 @@ export default function Scene({
   const [bursts, setBursts] = useState([]);
   const STATIONS = useMemo(() => buildStations(RADIUS), [RADIUS]);
 
-  // expose qWorld pour la mini-map
-  useFrame(() => { worldQuatRef?.current.copy(qWorldRef.current); });
+  // expose qWorld pour la mini-map / UI externe
+  useFrame(() => {
+    if (worldQuatRef?.current) worldQuatRef.current.copy(qWorldRef.current);
+  });
 
   // -------- helpers d'aim ----------
   // convertit une direction *locale planète (pré-spin)* → monde
   const localToWorldDir = (vLocalUnit) => {
-    const qSpin = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), spinYRef.current);
+    const qSpin = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), spinYRef.current);
     return vLocalUnit.clone().applyQuaternion(qSpin).applyQuaternion(qWorldRef.current);
   };
 
@@ -153,7 +165,10 @@ export default function Scene({
     if (next < 0) {
       if (alt > 0.02) {
         const contact = new THREE.Vector3(0, 0, RADIUS).applyQuaternion(qWorldRef.current);
-        setBursts((b) => [...b.slice(-6), { id: clock.getElapsedTime() + Math.random(), pos: contact, t0: clock.getElapsedTime() }]);
+        setBursts((b) => [
+          ...b.slice(-6),
+          { id: clock.getElapsedTime() + Math.random(), pos: contact, t0: clock.getElapsedTime() },
+        ]);
       }
       next = 0; vAlt.current = 0;
     }
@@ -238,32 +253,4 @@ export default function Scene({
       <CameraRig RADIUS={RADIUS} zoomRef={zoomRef} />
     </>
   );
-}
-
-// input
-function useSimpleInput() {
-  const [i, set] = useState({ up: false, down: false, left: false, right: false, jump: false });
-  useEffect(() => {
-    const down = (e) => {
-      if (["ArrowUp", "KeyW"].includes(e.code)) set((s) => ({ ...s, up: true }));
-      if (["ArrowDown", "KeyS"].includes(e.code)) set((s) => ({ ...s, down: true }));
-      if (["ArrowLeft", "KeyA"].includes(e.code)) set((s) => ({ ...s, left: true }));
-      if (["ArrowRight", "KeyD"].includes(e.code)) set((s) => ({ ...s, right: true }));
-      if (e.code === "Space") set((s) => ({ ...s, jump: true }));
-    };
-    const up = (e) => {
-      if (["ArrowUp", "KeyW"].includes(e.code)) set((s) => ({ ...s, up: false }));
-      if (["ArrowDown", "KeyS"].includes(e.code)) set((s) => ({ ...s, down: false }));
-      if (["ArrowLeft", "KeyA"].includes(e.code)) set((s) => ({ ...s, left: false }));
-      if (["ArrowRight", "KeyD"].includes(e.code)) set((s) => ({ ...s, right: false }));
-      if (e.code === "Space") set((s) => ({ ...s, jump: false }));
-    };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-    };
-  }, []);
-  return i;
 }
