@@ -12,158 +12,131 @@ import Modal from "@/scenes/ui/Modal";
 import TopNav from "@/scenes/ui/TopNav";
 import buildStations from "@/scenes/stations/buildStations";
 
-/* Rotation douce du monde (slerp -> target) + snap fin */
+// ✅ nouveau contrôleur entrée joueur (clavier + clic planète)
+import PlayerInput from "@/scenes/controls/PlayerInput";
+
+/* -----------------------------------------
+   WorldRotator
+   Slerp (interpolation sphérique) du quaternion "monde"
+   vers un quaternion cible, avec "snap" en fin de rotation.
+   - worldQuatRef : orientation actuelle du monde
+   - targetQuatRef : orientation cible
+   - speed : vitesse de slerp (plus grand = plus rapide)
+   ----------------------------------------- */
 function WorldRotator({ worldQuatRef, targetQuatRef, speed = 6 }) {
+  // Flag pour empêcher le spam de clics pendant une rotation en cours
   const busyRef = useRef(false);
 
   useFrame((_, dt) => {
     const curr = worldQuatRef.current;
     const target = targetQuatRef.current;
+
     const dot = Math.abs(curr.dot(target));
+    // Alignement quasi parfait → "snap" pour finir proprement
     if (1 - dot < 1e-5) {
       curr.copy(target).normalize();
       busyRef.current = false;
       return;
     }
+    // Rotation en cours
     busyRef.current = true;
     curr.slerp(target, Math.min(1, speed * dt)).normalize();
   });
 
-  WorldRotator.isBusy = busyRef; // pour throttle le clic
+  // Expose un flag statique lisible ailleurs (pour throttle les clics)
+  WorldRotator.isBusy = busyRef;
   return null;
-}
-
-/* Clic planète → event "saga-aim-local-raw" + cible pour le slerp local */
-function PickController({ RADIUS, worldQuatRef, targetQuatRef }) {
-  const tmp = useMemo(
-    () => ({
-      invQ: new THREE.Quaternion(),
-      pLocal: new THREE.Vector3(),
-      anchor: new THREE.Vector3(0, 0, 1),
-      rot: new THREE.Quaternion(),
-      safeAxis: new THREE.Vector3(0, 1, 0),
-    }),
-    []
-  );
-
-  const handleClick = useCallback(
-    (e) => {
-      if (WorldRotator.isBusy?.current) return; // évite spam pendant rotation
-      e.stopPropagation();
-
-      // Monde -> local "pré-rotation monde"
-      tmp.invQ.copy(worldQuatRef.current).invert();
-      tmp.pLocal.copy(e.point).normalize().applyQuaternion(tmp.invQ);
-      if (tmp.pLocal.lengthSq() < 1e-12) return;
-
-      // 1) Event que Scene connaît déjà
-      const ev = new CustomEvent("saga-aim-local-raw", {
-        detail: { dir: [tmp.pLocal.x, tmp.pLocal.y, tmp.pLocal.z] },
-      });
-      window.dispatchEvent(ev);
-
-      // 2) Slerp local (feedback immédiat)
-      const dot = tmp.pLocal.dot(tmp.anchor);
-      if (dot < -0.999999) {
-        tmp.rot.setFromAxisAngle(tmp.safeAxis, Math.PI);
-      } else {
-        tmp.rot.setFromUnitVectors(tmp.pLocal, tmp.anchor);
-      }
-      targetQuatRef.current.copy(tmp.rot).normalize();
-    },
-    [tmp, worldQuatRef, targetQuatRef]
-  );
-
-  return (
-    <mesh onClick={handleClick} renderOrder={-9999}>
-      {/* Légèrement > rayon planète pour capter le clic en priorité */}
-      <sphereGeometry args={[RADIUS + 0.01, 16, 12]} />
-      <meshBasicMaterial transparent opacity={0} depthWrite={false} depthTest={false} />
-    </mesh>
-  );
 }
 
 export default function MoonScene() {
   const { settings } = useSettings();
 
+  // État UI
   const [modal, setModal] = useState({ open: false, id: null });
   const [navTarget, setNavTarget] = useState(null);
+
+  // Clé de remount Canvas (utile après "context lost" en dev)
   const [canvasKey, setCanvasKey] = useState(0);
 
+  // Paramètres scène
   const RADIUS = BASE_RADIUS;
   const stationsForUI = useMemo(() => buildStations(RADIUS), [RADIUS]);
 
+  // Orientation du monde :
+  // - worldQuatRef est lu par la Scene
+  // - targetQuatRef est la destination vers laquelle on slerp
   const worldQuatRef = useRef(new THREE.Quaternion());
   const targetQuatRef = useRef(new THREE.Quaternion().copy(worldQuatRef.current));
+
+  // Zoom caméra (consommé par Scene)
   const zoomRef = useRef(0.25);
 
-  const lostOnceRef = useRef(false); // empêche remounts en boucle en dev
+  // Évite remounts à l’infini si le contexte WebGL se perd plusieurs fois
+  const lostOnceRef = useRef(false);
 
- const onCanvasCreated = useCallback(({ camera, gl }) => {
-  camera.lookAt(0, 0, 0);
+  /* -----------------------------------------
+     onCanvasCreated
+     - règle les options de rendu
+     - capte "webglcontextlost" en *capture* pour éviter les logs bruyants
+       et remonter proprement le Canvas une seule fois en dev
+     ----------------------------------------- */
+  const onCanvasCreated = useCallback(({ camera, gl }) => {
+    camera.lookAt(0, 0, 0);
 
-  gl.setClearColor("#050a16", 1);
-  gl.shadowMap.enabled = false;
-  gl.domElement.style.pointerEvents = "auto";
+    gl.setClearColor("#050a16", 1);
+    gl.shadowMap.enabled = false;
+    gl.domElement.style.pointerEvents = "auto";
 
-  // Qualité couleur
-  gl.outputColorSpace = THREE.SRGBColorSpace;
-  gl.toneMapping = THREE.ACESFilmicToneMapping;
-  gl.toneMappingExposure = 1.0;
+    // Qualité colorimétrique correcte
+    gl.outputColorSpace = THREE.SRGBColorSpace;
+    gl.toneMapping = THREE.ACESFilmicToneMapping;
+    gl.toneMappingExposure = 1.0;
 
-  const canvas = gl.domElement;
+    const canvas = gl.domElement;
 
-  // (optionnel) debug GPU — décommente si tu veux voir le vendor/renderer
-  // const info = gl.getExtension?.("WEBGL_debug_renderer_info");
-  // if (info) {
-  //   console.log(
-  //     "[WebGL] GPU:",
-  //     gl.getParameter(info.UNMASKED_VENDOR_WEBGL),
-  //     "-",
-  //     gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
-  //   );
-  // }
+    // ⚠️ Capture AVANT Three : évite le message "THREE.WebGLRenderer: Context Lost."
+    const onLostCapture = (e) => {
+      e.preventDefault();
+      e.stopImmediatePropagation(); // coupe le handler interne de Three
+      if (lostOnceRef.current) return;
+      lostOnceRef.current = true;
+      // Remount unique (utile en dev pour repartir proprement)
+      setTimeout(() => setCanvasKey((k) => k + 1), 0);
+    };
 
-  // ⚠️ Capture AVANT Three : pas de "Context Lost." dans la console
-  const onLostCapture = (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation(); // coupe le handler interne de Three (et donc le log)
-    if (lostOnceRef.current) return;
-    lostOnceRef.current = true;
-    // Remount unique (utile en dev pour repartir proprement)
-    setTimeout(() => setCanvasKey((k) => k + 1), 0);
-  };
+    const onRestored = () => {
+      // Après restauration, on reset l’état GL si dispo (optionnel)
+      try { gl.resetState(); } catch {}
+    };
 
-  const onRestored = () => {
-    try { gl.resetState(); } catch {}
-  };
+    canvas.addEventListener("webglcontextlost", onLostCapture, { capture: true, passive: false });
+    canvas.addEventListener("webglcontextrestored", onRestored, { passive: true });
 
-  canvas.addEventListener("webglcontextlost", onLostCapture, { capture: true, passive: false });
-  canvas.addEventListener("webglcontextrestored", onRestored, { passive: true });
+    // ✅ cleanup propre à l’unmount
+    return () => {
+      // Important: passer "true" pour retirer un listener enregistré avec { capture:true }
+      canvas.removeEventListener("webglcontextlost", onLostCapture, true);
+      canvas.removeEventListener("webglcontextrestored", onRestored);
+    };
+  }, []);
 
-  // ✅ cleanup propre à l’unmount
-  return () => {
-    canvas.removeEventListener("webglcontextlost", onLostCapture, { capture: true });
-    canvas.removeEventListener("webglcontextrestored", onRestored);
-  };
-}, []);
-
-
-  const handleModalClose = useCallback(() => setModal({ open: false, id: null }), []);
-  const handleNavTarget = useCallback((id) => setNavTarget(id), []);
-  const handleNavConsumed = useCallback(() => setNavTarget(null), []);
-  const handleOpenStation = useCallback((id) => setModal({ open: true, id }), []);
+  // Handlers UI
+  const handleModalClose   = useCallback(() => setModal({ open: false, id: null }), []);
+  const handleNavTarget    = useCallback((id) => setNavTarget(id), []);
+  const handleNavConsumed  = useCallback(() => setNavTarget(null), []);
+  const handleOpenStation  = useCallback((id) => setModal({ open: true, id }), []);
 
   return (
     <div className="fixed inset-0 bg-black">
-      {/* TopNav (navbar unique) */}
+      {/* === Navbar fixe en haut (DOM normal, hors Canvas) === */}
       <div className="fixed inset-x-0 top-0 z-[120] pointer-events-auto">
         <TopNav stations={stationsForUI} onGo={handleNavTarget} />
       </div>
 
+      {/* === Canvas 3D principal === */}
       <Canvas
         key={canvasKey}
-        dpr={[1, 2]}
+        dpr={[1, 2]}             // Retina okay
         shadows={false}
         gl={{
           antialias: true,
@@ -178,13 +151,17 @@ export default function MoonScene() {
         onCreated={onCanvasCreated}
         style={{ width: "100vw", height: "100vh", zIndex: 0, display: "block" }}
       >
-        {/* rotation douce */}
+        {/* Rotation douce du monde vers une cible */}
         <WorldRotator worldQuatRef={worldQuatRef} targetQuatRef={targetQuatRef} speed={6} />
 
-        {/* clic direct planète */}
-        <PickController RADIUS={RADIUS} worldQuatRef={worldQuatRef} targetQuatRef={targetQuatRef} />
+        {/* 🎮 Entrées joueur (clavier + clic planète) + feedback d’orientation */}
+        <PlayerInput
+          RADIUS={RADIUS}
+          worldQuatRef={worldQuatRef}
+          targetQuatRef={targetQuatRef}
+        />
 
-        {/* ta scène 3D */}
+        {/* Ta scène 3D : consomme navTarget + refs (worldQuatRef / zoomRef) */}
         <Scene
           RADIUS={RADIUS}
           navTarget={navTarget}
@@ -198,18 +175,18 @@ export default function MoonScene() {
         />
       </Canvas>
 
-      {/* Overlay DOM normal (hors Canvas) : bouton réglages + badge */}
+      {/* === Overlay DOM (portal) : bouton Réglages + badge === */}
       <OverlayUI />
 
-      {/* Modale d’infos */}
+      {/* === Modale d’infos === */}
       <Modal
         open={modal.open}
         title={
-          modal.id === "projets" ? "Projets" :
+          modal.id === "projets"     ? "Projets" :
           modal.id === "competences" ? "Compétences" :
-          modal.id === "parcours" ? "Parcours" :
-          modal.id === "contact" ? "Contact" :
-          modal.id === "bts" ? "BTS / Référentiel" : ""
+          modal.id === "parcours"    ? "Parcours" :
+          modal.id === "contact"     ? "Contact" :
+          modal.id === "bts"         ? "BTS / Référentiel" : ""
         }
         onClose={handleModalClose}
       >

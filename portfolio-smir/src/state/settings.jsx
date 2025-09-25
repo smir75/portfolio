@@ -1,4 +1,3 @@
-// src/state/settings.js
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const SettingsContext = createContext(null);

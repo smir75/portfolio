@@ -280,18 +280,8 @@ export default function Landing({ onEnter }) {
 
   const canvas = gl.domElement;
 
-  // (optionnel) debug GPU — décommente si besoin de logs
-  // const info = gl.getExtension?.("WEBGL_debug_renderer_info");
-  // if (info) {
-  //   console.log(
-  //     "[WebGL] GPU:",
-  //     gl.getParameter(info.UNMASKED_VENDOR_WEBGL),
-  //     "-",
-  //     gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
-  //   );
-  // }
 
-  // On avale l'event en capture → pas de log "Context Lost."
+ 
   const onLostCapture = (e) => {
     e.preventDefault();
     e.stopImmediatePropagation();
