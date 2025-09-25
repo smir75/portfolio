@@ -1,20 +1,21 @@
 // src/scenes/core/Scene.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 
 import SpaceDecor from "@/scenes/core/SpaceDecor";
 import FailSafeLight from "@/scenes/core/FailSafeLight";
 import SunMoonCycle from "@/scenes/sky/SunMoonCycle";
-import Nebulae from "@/scenes/sky/Nebulae";
-import FlybyShips from "@/scenes/sky/FlybyShips";
+
+// ↓ ces 4 composants lourds passent en lazy
+const AsteroidBelt = lazy(() => import("@/scenes/belt/AsteroidBelt"));
+const Satellites   = lazy(() => import("@/scenes/orbit/Satellites"));
+const Nebulae      = lazy(() => import("@/scenes/sky/Nebulae"));
+const FlybyShips   = lazy(() => import("@/scenes/sky/FlybyShips"));
 
 import Moon from "@/scenes/terrain/Moon";
 import Rocks from "@/scenes/terrain/Rocks";
 import SurfaceParticles from "@/scenes/terrain/SurfaceParticles";
-
-import AsteroidBelt from "@/scenes/belt/AsteroidBelt";
-import Satellites from "@/scenes/orbit/Satellites";
 
 import Stations from "@/scenes/stations/Stations";
 import buildStations from "@/scenes/stations/buildStations";
@@ -29,7 +30,6 @@ import ClickAim from "@/scenes/nav/ClickAim";
 import CameraRig from "@/scenes/nav/CameraRig";
 
 import { clamp, angleBetween } from "@/utils/math3d";
-import useInput from "@/hooks/useInput";
 
 import {
   ACCEL, DAMP, MAX_SPEED, STEER,
@@ -49,25 +49,34 @@ export default function Scene({
   worldQuatRef,
   zoomRef,
 }) {
-  // input clavier centralisé
-  const input = useInput();
+  const { camera } = useThree();
+  // input clavier (local, pas de dépendance externe)
+  const input = useSimpleInput();
+
+  // pré-armement des éléments lointains (lazy) une frame après le 1er render
+  const [farReady, setFarReady] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setFarReady(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   // orientation et cible
   const qWorldRef = useRef(new THREE.Quaternion());
   const qTargetRef = useRef(null);
 
   // planet spin
-  const worldGroup = useRef();     // suit qWorldRef
-  const spinGroup = useRef();      // tourne en continu
-  const spinSpeed = 0.02;
-  const spinYRef = useRef(0);      // exposé pour corriger le clic
+  const worldGroup = useRef(); // suit qWorldRef
+  const spinGroup  = useRef(); // tourne en continu
+  const spinSpeed  = 0.02;
+  const spinYRef   = useRef(0);  // exposé pour corriger le clic
 
   // états dynamiques
   const vy = useRef(0), vx = useRef(0);
   const [alt, setAlt] = useState(0);
   const vAlt = useRef(0);
-  const sphereRef = useRef();      // mesh principal de la lune (raycast)
+  const sphereRef = useRef(); // mesh principal de la lune (raycast)
   const [bursts, setBursts] = useState([]);
+
   const STATIONS = useMemo(() => buildStations(RADIUS), [RADIUS]);
 
   // expose qWorld pour la mini-map / UI externe
@@ -144,15 +153,15 @@ export default function Scene({
 
     // contrôles
     let ay = 0, ax = 0;
-    if (input.left) ay += ACCEL;
+    if (input.left)  ay += ACCEL;
     if (input.right) ay -= ACCEL;
-    if (input.up) ax += ACCEL;
-    if (input.down) ax -= ACCEL;
+    if (input.up)    ax += ACCEL;
+    if (input.down)  ax -= ACCEL;
 
     vy.current = clamp(vy.current + ay * dt, -MAX_SPEED, MAX_SPEED) * Math.exp(-DAMP * dt);
     vx.current = clamp(vx.current + ax * dt, -MAX_SPEED, MAX_SPEED) * Math.exp(-DAMP * dt);
 
-    const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), vy.current * dt);
+    const qYaw   = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), vy.current * dt);
     const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), vx.current * dt);
     qWorldRef.current.premultiply(qYaw).premultiply(qPitch).normalize();
 
@@ -176,24 +185,67 @@ export default function Scene({
   });
 
   // Entrée = station face caméra (prend en compte le spin)
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.code !== "Enter") return;
-      const zPlus = new THREE.Vector3(0, 0, 1);
-      let best = null, bestAng = Infinity;
-      STATIONS.forEach((s) => {
-        const dirW = localToWorldDir(s.pos.clone().normalize());
-        const ang = angleBetween(zPlus, dirW);
-        if (ang < bestAng) { bestAng = ang; best = s.id; }
-      });
-      if (bestAng < ENTER_OPEN) onOpenStation(best);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [STATIONS, onOpenStation]); // eslint-disable-line
+  // Entrée = station face caméra (prend en compte le spin) — version sécurisée
+// Entrée = station face caméra (prend en compte le spin) — version sécurisée écran + angle
+useEffect(() => {
+  const onKey = (e) => {
+    if (e.code !== "Enter") return;
+    if (!camera) return;
+
+    const zPlus = new THREE.Vector3(0, 0, 1);
+
+    // Fenêtre de centrage plus indulgente (NDC)
+    const NDC_WINDOW = 0.32; // 0.22 → 0.32 pour tolérance
+    // Seuil angle (constants/space ENTER_OPEN ~ 0.20 rad) — on garde
+    // + on autorise un peu plus si c’est ultra-centré
+    const ANG_BASE = ENTER_OPEN;        // ~0.20
+    const ANG_BONUS = 0.26;             // si ultra-centré (<= 0.12 NDC), on autorise jusqu’à ~15°
+
+    let bestId = null;
+    let bestScore = Infinity; // score combiné angle + centrage
+
+    for (const s of STATIONS) {
+      // direction monde de la station (pré-spin -> monde)
+      const dirW = localToWorldDir(s.pos.clone().normalize()); // unit
+      const ang = angleBetween(zPlus, dirW);
+      if (!Number.isFinite(ang)) continue;
+
+      // position monde approx (rayon réel ~ RADIUS + 0.06)
+      const posW = dirW.clone().multiplyScalar(RADIUS + 0.06);
+      const ndc = posW.clone().project(camera);
+
+      // visible devant la caméra (dans le frustum)
+      const inFrustum = ndc.z >= -1 && ndc.z <= 1;
+      if (!inFrustum) continue;
+
+      const cx = Math.abs(ndc.x);
+      const cy = Math.abs(ndc.y);
+      const centered = cx <= NDC_WINDOW && cy <= NDC_WINDOW;
+      if (!centered) continue;
+
+      // petite prime si ultra centré
+      const ultraCentered = cx <= 0.12 && cy <= 0.12;
+      const angOK = ang < (ultraCentered ? ANG_BONUS : ANG_BASE);
+      if (!angOK) continue;
+
+      // score = max(|x|,|y|) + petit poids sur l’angle
+      const score = Math.max(cx, cy) + ang * 0.25;
+      if (score < bestScore) {
+        bestScore = score;
+        bestId = s.id;
+      }
+    }
+
+    if (!bestId) return;
+    onOpenStation?.(bestId);
+  };
+
+  window.addEventListener("keydown", onKey, { passive: true });
+  return () => window.removeEventListener("keydown", onKey);
+}, [STATIONS, onOpenStation, RADIUS, camera]); // eslint-disable-line
 
   const leanX = THREE.MathUtils.clamp(-vx.current * 0.15, -0.25, 0.25);
-  const leanY = THREE.MathUtils.clamp(vy.current * 0.12, -0.22, 0.22);
+  const leanY = THREE.MathUtils.clamp( vy.current * 0.12, -0.22, 0.22);
   const thrusterPower = clamp(Math.abs(vx.current) + Math.abs(vy.current) + (alt > 0 ? 0.8 : 0), 0, 1);
 
   const qLow = quality === "low";
@@ -205,7 +257,7 @@ export default function Scene({
   return (
     <>
       {/* décor global */}
-      <SpaceDecor />
+      <SpaceDecor reduceMotion={reduceMotion} quality={quality} />
       <SunMoonCycle />
       <FailSafeLight />
 
@@ -224,23 +276,43 @@ export default function Scene({
         </group>
       </group>
 
-      {/* entourage indépendant du spin planète */}
-      <AsteroidBelt
-        RADIUS={RADIUS}
-        count={Math.floor(beltCount * 0.8)}
-        reduceMotion={reduceMotion}
-        tilt={0.45}
-        centerOffset={0.0}
-        inner={3.2}
-        outer={4.8}
-      />
-      <Satellites RADIUS={RADIUS} count={satCount} reduceMotion={reduceMotion} />
+      {/* entourage indépendant du spin planète - monté en lazy après 1 frame */}
+      <Suspense fallback={null}>
+        {farReady && (
+          <AsteroidBelt
+            RADIUS={RADIUS}
+            count={Math.floor(beltCount * 0.8)}
+            reduceMotion={reduceMotion}
+            tilt={0.45}
+            centerOffset={0.0}
+            inner={3.2}
+            outer={4.8}
+          />
+        )}
+      </Suspense>
 
-      <Nebulae />
-      <FlybyShips />
+      <Suspense fallback={null}>
+        {farReady && (
+          <Satellites RADIUS={RADIUS} count={satCount} reduceMotion={reduceMotion} />
+        )}
+      </Suspense>
+
+      <Suspense fallback={null}>
+        {farReady && <Nebulae />}
+      </Suspense>
+
+      <Suspense fallback={null}>
+        {farReady && <FlybyShips />}
+      </Suspense>
 
       {/* acteur indépendant */}
-      <Astronaut RADIUS={RADIUS} alt={alt} leanX={leanX} leanY={leanY} thrusterPower={thrusterPower} />
+      <Astronaut
+        RADIUS={RADIUS}
+        alt={alt}
+        leanX={leanX}
+        leanY={leanY}
+        thrusterPower={thrusterPower}
+      />
 
       {/* Clic planète → onAimLocal (corrigé avec le spin) */}
       <ClickAim
@@ -253,4 +325,36 @@ export default function Scene({
       <CameraRig RADIUS={RADIUS} zoomRef={zoomRef} />
     </>
   );
+}
+
+/* ---------------------------
+   Mini hook de saisie clavier
+   --------------------------- */
+function useSimpleInput() {
+  const [i, set] = useState({ up: false, down: false, left: false, right: false, jump: false });
+
+  useEffect(() => {
+    const down = (e) => {
+      if (["ArrowUp", "KeyW"].includes(e.code))    set((s) => ({ ...s, up: true }));
+      if (["ArrowDown", "KeyS"].includes(e.code))  set((s) => ({ ...s, down: true }));
+      if (["ArrowLeft", "KeyA"].includes(e.code))  set((s) => ({ ...s, left: true }));
+      if (["ArrowRight", "KeyD"].includes(e.code)) set((s) => ({ ...s, right: true }));
+      if (e.code === "Space")                      set((s) => ({ ...s, jump: true }));
+    };
+    const up = (e) => {
+      if (["ArrowUp", "KeyW"].includes(e.code))    set((s) => ({ ...s, up: false }));
+      if (["ArrowDown", "KeyS"].includes(e.code))  set((s) => ({ ...s, down: false }));
+      if (["ArrowLeft", "KeyA"].includes(e.code))  set((s) => ({ ...s, left: false }));
+      if (["ArrowRight", "KeyD"].includes(e.code)) set((s) => ({ ...s, right: false }));
+      if (e.code === "Space")                      set((s) => ({ ...s, jump: false }));
+    };
+    window.addEventListener("keydown", down, { passive: true });
+    window.addEventListener("keyup", up, { passive: true });
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
+
+  return i;
 }

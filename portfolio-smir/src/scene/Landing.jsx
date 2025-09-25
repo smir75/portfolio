@@ -165,6 +165,7 @@ export default function Landing({ onEnter }) {
   const [isVisible, setIsVisible] = useState(true);
   const timeoutRef = useRef(null);
   const isUnmountedRef = useRef(false);
+  const didEnterRef = useRef(false);
 
   // Empêche le scroll derrière le landing
   useEffect(() => {
@@ -186,9 +187,10 @@ export default function Landing({ onEnter }) {
     if (launching) return;
     setLaunching(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    // Sécurité (si jamais onExitTop ne déclenche pas)
+   // ✅ Sécurité (si jamais onExitTop ne déclenche pas) — mais protégée
     timeoutRef.current = setTimeout(() => {
-      if (!isUnmountedRef.current) {
+      if (!isUnmountedRef.current && !didEnterRef.current) {
+        didEnterRef.current = true;
         setIsVisible(false);
         onEnter?.();
       }
@@ -291,8 +293,16 @@ export default function Landing({ onEnter }) {
             bottomPx={88}
             scale={1.0}
             onExitTop={() => {
-              setIsVisible(false);
-              onEnter?.();
+                            // ✅ Première arrivée : on enter + annule le timeout
+              if (!didEnterRef.current) {
+                didEnterRef.current = true;
+                if (timeoutRef.current) {
+                  clearTimeout(timeoutRef.current);
+                  timeoutRef.current = null;
+                }
+                setIsVisible(false);
+                onEnter?.();
+              }
             }}
           />
         </Canvas>
@@ -307,7 +317,7 @@ export default function Landing({ onEnter }) {
         <div className="landing-center">
           <h1
             style={{
-              fontFamily: "Orbitron, system-ui, sans-serif",
+              fontFamily: "OrbitronLocal, Orbitron, system-ui, sans-serif",
               fontSize: "clamp(2rem, 5vw, 3.6rem)",
               lineHeight: 1.02,
               fontWeight: 800,

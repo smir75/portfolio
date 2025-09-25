@@ -3,6 +3,24 @@
 @tailwind utilities;
 
 /* =========================
+   Fonts locales stables
+   ========================= */
+@font-face {
+  font-family: "OrbitronLocal";
+  src: url("/fonts/Orbitron-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "InterLocal";
+  src: url("/fonts/Inter-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =========================
    Variables CSS optimisées
    ========================= */
 :root {
@@ -13,14 +31,12 @@
   --glass-from: rgba(15, 23, 42, 0.85);
   --glass-to: rgba(2, 6, 23, 0.85);
 
-  /* Variables pour les transitions optimisées */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-cubic: cubic-bezier(0.4, 0, 0.2, 1);
   --transition-fast: 200ms;
   --transition-normal: 300ms;
   --transition-slow: 500ms;
 
-  /* Variables pour le blur optimisé */
   --blur-light: blur(4px);
   --blur-normal: blur(6px);
   --blur-heavy: blur(8px);
@@ -33,7 +49,6 @@ html {
   box-sizing: border-box;
   scroll-behavior: smooth;
 }
-
 *,
 *::before,
 *::after {
@@ -49,6 +64,7 @@ body,
   padding: 0;
 }
 
+/* ====== UNIQUE bloc body (fusion, sans doublon) ====== */
 body {
   background: var(--space-bg);
   color: var(--text-main);
@@ -56,16 +72,17 @@ body {
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
 
-  /* Polices optimisées */
-  font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI",
+  /* Polices locales stables */
+  font-family: "InterLocal", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
   font-display: swap;
   font-synthesis: none;
+  font-variant-ligatures: none; /* ← évite des tables OpenType avancées */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeSpeed;
 
-  /* Performance optimisations */
+  /* Performance */
   -webkit-tap-highlight-color: transparent;
   touch-action: pan-x pan-y;
 
@@ -80,8 +97,8 @@ h1,
 h2,
 h3,
 .font-orbitron {
-  font-family: "Orbitron", "Space Grotesk", -apple-system, BlinkMacSystemFont,
-    sans-serif;
+  font-family: "OrbitronLocal", "InterLocal", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-display: swap;
   letter-spacing: 0.02em;
   font-weight: 600;
@@ -102,8 +119,6 @@ h3,
   transform-style: preserve-3d;
   backface-visibility: hidden;
 }
-
-/* Volets de la Landing avec GPU acceleration */
 .split-pane {
   position: fixed;
   top: 0;
@@ -111,47 +126,33 @@ h3,
   width: 50vw;
   z-index: 1001;
   pointer-events: none;
-
-  /* Optimisations GPU */
   will-change: transform;
   transform: translateZ(0);
   backface-visibility: hidden;
   contain: strict;
-
-  /* Transition optimisée */
   transition: transform var(--transition-slow) var(--ease-out-expo),
     opacity var(--transition-normal) ease-out;
-
-  /* Backdrop-filter optimisé */
   backdrop-filter: var(--blur-normal);
   -webkit-backdrop-filter: var(--blur-normal);
-
-  /* Background optimisé */
   background: linear-gradient(180deg, var(--glass-from), var(--glass-to));
   border: 1px solid var(--glass-border);
-
-  /* Isolation pour éviter les repaint */
   isolation: isolate;
 }
-
 .split-pane.left {
   left: 0;
   border-right: none;
   transform: translate3d(0, 0, 0);
 }
-
 .split-pane.right {
   right: 0;
   border-left: none;
   transform: translate3d(0, 0, 0);
 }
-
 .split-pane.left.out,
 .launching .split-pane.left {
   transform: translate3d(-100%, 0, 0);
   opacity: 0;
 }
-
 .split-pane.right.out,
 .launching .split-pane.right {
   transform: translate3d(100%, 0, 0);
@@ -167,14 +168,10 @@ h3,
   left: 12px;
   right: 12px;
   z-index: 100;
-
-  /* Optimisations */
   will-change: transform;
   transform: translateZ(0);
   contain: layout style;
   isolation: isolate;
-
-  /* Style glass optimisé */
   border: 1px solid var(--glass-border);
   background: linear-gradient(
     180deg,
@@ -184,25 +181,18 @@ h3,
   backdrop-filter: var(--blur-heavy);
   -webkit-backdrop-filter: var(--blur-heavy);
   border-radius: 16px;
-
-  /* Performance */
   pointer-events: auto;
   user-select: none;
 }
-
 .minimap-fixed {
   position: fixed;
   bottom: 16px;
   right: 16px;
   z-index: 90;
-
-  /* Optimisations */
   will-change: transform;
   transform: translateZ(0);
   contain: strict;
   isolation: isolate;
-
-  /* Style */
   border: 1px solid var(--glass-border);
   background: linear-gradient(
     180deg,
@@ -215,13 +205,11 @@ h3,
   padding: 8px;
   pointer-events: auto;
 }
-
 .minimap-fixed canvas {
   width: 180px;
   height: 180px;
   display: block;
   border-radius: 8px;
-  /* Optimisation canvas */
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
 }
@@ -241,33 +229,24 @@ h3,
   -webkit-backdrop-filter: var(--blur-normal);
   border-radius: 12px;
   padding: 8px 12px;
-
-  /* Optimisations */
   will-change: transform, box-shadow;
   transform: translateZ(0);
   contain: layout style;
-
-  /* Interactions */
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-
-  /* Transitions optimisées */
   transition: transform var(--transition-fast) var(--ease-in-out-cubic),
     box-shadow var(--transition-fast) var(--ease-in-out-cubic),
     background-color var(--transition-fast) ease-out;
 }
-
 .btn-glass:hover {
   transform: translateY(-1px) translateZ(0);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-
 .btn-glass:active {
   transform: translateY(0) translateZ(0);
   transition-duration: 50ms;
 }
-
 .btn-glass:focus-visible {
   outline: 2px solid rgba(59, 130, 246, 0.5);
   outline-offset: 2px;
@@ -283,45 +262,32 @@ h3,
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: var(--blur-light);
   -webkit-backdrop-filter: var(--blur-light);
-
-  /* Optimisations */
   will-change: opacity;
   contain: strict;
-
-  /* Animation */
   opacity: 0;
   transition: opacity var(--transition-normal) ease-out;
 }
-
 .modal-backdrop.open {
   opacity: 1;
 }
-
 .modal-content {
   position: relative;
   max-width: 90vw;
   max-height: 90vh;
   margin: auto;
-
-  /* Glass effect */
   background: linear-gradient(180deg, var(--glass-from), var(--glass-to));
   border: 1px solid var(--glass-border);
   backdrop-filter: var(--blur-heavy);
   -webkit-backdrop-filter: var(--blur-heavy);
   border-radius: 16px;
-
-  /* Optimisations */
   will-change: transform, opacity;
   transform: translateZ(0);
   contain: layout style;
-
-  /* Animation */
   opacity: 0;
   transform: scale(0.9) translateZ(0);
   transition: transform var(--transition-normal) var(--ease-out-expo),
     opacity var(--transition-normal) ease-out;
 }
-
 .modal-content.open {
   opacity: 1;
   transform: scale(1) translateZ(0);
@@ -335,19 +301,15 @@ h3,
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
-
 .gpu-accelerated {
   will-change: transform;
   transform: translateZ(0);
   backface-visibility: hidden;
 }
-
 .smooth-scroll {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
 }
-
-/* Optimisation pour le scrolling */
 .scroll-container {
   contain: strict;
   overflow-anchor: none;
@@ -364,7 +326,6 @@ h3,
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-
   .split-pane,
   .btn-glass,
   .modal-content,
@@ -372,39 +333,31 @@ h3,
     transition: none !important;
   }
 }
-
 @media (max-width: 768px) {
   .top-nav-glass {
     top: 8px;
     left: 8px;
     right: 8px;
   }
-
   .minimap-fixed {
     bottom: 8px;
     right: 8px;
   }
-
   .minimap-fixed canvas {
     width: 120px;
     height: 120px;
   }
 }
-
-/* Optimisation pour les écrans à haute densité */
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
   .minimap-fixed canvas {
     image-rendering: -webkit-optimize-contrast;
   }
 }
-
-/* Optimisations pour le touch */
 @media (hover: none) and (pointer: coarse) {
   .btn-glass:hover {
     transform: none;
     box-shadow: none;
   }
-
   .btn-glass:active {
     transform: scale(0.98);
     background: linear-gradient(
@@ -418,22 +371,16 @@ h3,
 /* =========================
    Optimisations critiques
    ========================= */
-/* Prévention du layout shift */
 .contain-strict {
   contain: strict;
 }
-
 .contain-layout {
   contain: layout style;
 }
-
-/* Optimisation pour le rendu */
 .render-optimize {
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
 }
-
-/* Force hardware acceleration */
 .hardware-accelerate {
   will-change: transform;
   transform: translateZ(0);
@@ -444,16 +391,12 @@ h3,
 /* =======================================================
    =======  AJOUTS MINIMAUX POUR LA PAGE LANDING  ========
    ======================================================= */
-
-/* Canvas 3D (au-dessus des volets, sous le contenu) */
 .landing-canvas {
   position: absolute;
   inset: 0;
   z-index: 1002;
   pointer-events: none;
 }
-
-/* Contenu centré tout au-dessus */
 .landing-center-wrap {
   position: relative;
   z-index: 1003;
@@ -463,7 +406,6 @@ h3,
   width: 100%;
   height: 100%;
 }
-
 .landing-center {
   width: 100%;
   max-width: 980px;
@@ -476,8 +418,6 @@ h3,
   gap: 1rem;
   will-change: transform, opacity;
 }
-
-/* Halo radial discret (sous les panes) */
 #landing-overlay::before {
   content: "";
   position: absolute;
@@ -490,10 +430,8 @@ h3,
   pointer-events: none;
   transition: opacity var(--transition-slow, 500ms) ease;
   will-change: opacity;
-  z-index: 999; /* < .split-pane (1001) < .landing-canvas (1002) < .landing-center (1003) */
+  z-index: 999;
 }
-
-/* Disparition du contenu pendant le décollage */
 .launching .landing-center {
   transform: translateY(-18vh) scale(0.98);
   opacity: 0;

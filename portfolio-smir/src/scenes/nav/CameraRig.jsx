@@ -5,6 +5,7 @@ import { clamp, lerp } from "@/utils/math3d";
 
 export default function CameraRig({ RADIUS, zoomRef }) {
   const { camera } = useThree();
+
   const targetNear = useRef(new THREE.Vector3(0, 0.25, RADIUS));
   const targetFar = useRef(new THREE.Vector3(0, 0.0, 0.0));
   const zSmooth = useRef(0.25);
@@ -15,23 +16,20 @@ export default function CameraRig({ RADIUS, zoomRef }) {
   const farDist = RADIUS * 6.0 + 12;
   const nearDist = RADIUS + 0.9;
 
+  // Molette : une seule écoute globale (couvre Canvas + UI)
   useEffect(() => {
     const onWheel = (e) => {
       e.preventDefault();
       const delta = e.deltaY;
       const step = 0.06;
-      zSmooth.current = clamp(
-        zSmooth.current + (delta > 0 ? step : -step),
-        0,
-        1
-      );
+      zSmooth.current = clamp(zSmooth.current + (delta > 0 ? step : -step), 0, 1);
       if (zoomRef) zoomRef.current = zSmooth.current;
     };
-    // Une seule écoute globale
     window.addEventListener("wheel", onWheel, { passive: false });
     return () => window.removeEventListener("wheel", onWheel);
   }, [zoomRef]);
 
+  // Raccourcis clavier pour zoom
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "+" || e.key === "=") {
@@ -51,20 +49,25 @@ export default function CameraRig({ RADIUS, zoomRef }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [zoomRef]);
 
+  // Gère la densité de pixels (dpi compensation)
   useEffect(() => {
     const onResize = () => setDeviceRatio(window.devicePixelRatio || 1);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  // Animation de la caméra
   useFrame(({ clock }) => {
     const t = zSmooth.current;
+
     const tgt = new THREE.Vector3()
       .copy(targetFar.current)
       .lerp(targetNear.current, Math.pow(t, 1.2));
+
     const baseDist = lerp(farDist, nearDist, t);
     const dpiComp = 1 / Math.pow(deviceRatio, 0.5);
     const dist = baseDist * dpiComp;
+
     const sway = 0.03 * Math.sin(clock.getElapsedTime() * 0.7);
 
     camera.position.set(0, 2.2 + 0.25 * t, dist + sway);
