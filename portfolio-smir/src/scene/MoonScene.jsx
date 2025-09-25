@@ -1,7 +1,7 @@
 // src/scene/MoonScene.jsx
 import React, { useMemo, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 
 import { useSettings } from "@/state/settings.jsx";
 import { BASE_RADIUS } from "@/constants/space";
@@ -12,41 +12,8 @@ import Modal from "@/scenes/ui/Modal";
 import TopNav from "@/scenes/ui/TopNav";
 import buildStations from "@/scenes/stations/buildStations";
 
-// ✅ nouveau contrôleur entrée joueur (clavier + clic planète)
-import PlayerInput from "@/scenes/controls/PlayerInput";
 
-/* -----------------------------------------
-   WorldRotator
-   Slerp (interpolation sphérique) du quaternion "monde"
-   vers un quaternion cible, avec "snap" en fin de rotation.
-   - worldQuatRef : orientation actuelle du monde
-   - targetQuatRef : orientation cible
-   - speed : vitesse de slerp (plus grand = plus rapide)
-   ----------------------------------------- */
-function WorldRotator({ worldQuatRef, targetQuatRef, speed = 6 }) {
-  // Flag pour empêcher le spam de clics pendant une rotation en cours
-  const busyRef = useRef(false);
 
-  useFrame((_, dt) => {
-    const curr = worldQuatRef.current;
-    const target = targetQuatRef.current;
-
-    const dot = Math.abs(curr.dot(target));
-    // Alignement quasi parfait → "snap" pour finir proprement
-    if (1 - dot < 1e-5) {
-      curr.copy(target).normalize();
-      busyRef.current = false;
-      return;
-    }
-    // Rotation en cours
-    busyRef.current = true;
-    curr.slerp(target, Math.min(1, speed * dt)).normalize();
-  });
-
-  // Expose un flag statique lisible ailleurs (pour throttle les clics)
-  WorldRotator.isBusy = busyRef;
-  return null;
-}
 
 export default function MoonScene() {
   const { settings } = useSettings();
@@ -63,10 +30,8 @@ export default function MoonScene() {
   const stationsForUI = useMemo(() => buildStations(RADIUS), [RADIUS]);
 
   // Orientation du monde :
-  // - worldQuatRef est lu par la Scene
-  // - targetQuatRef est la destination vers laquelle on slerp
+  
   const worldQuatRef = useRef(new THREE.Quaternion());
-  const targetQuatRef = useRef(new THREE.Quaternion().copy(worldQuatRef.current));
 
   // Zoom caméra (consommé par Scene)
   const zoomRef = useRef(0.25);
@@ -151,16 +116,7 @@ export default function MoonScene() {
         onCreated={onCanvasCreated}
         style={{ width: "100vw", height: "100vh", zIndex: 0, display: "block" }}
       >
-        {/* Rotation douce du monde vers une cible */}
-        <WorldRotator worldQuatRef={worldQuatRef} targetQuatRef={targetQuatRef} speed={6} />
-
-        {/* 🎮 Entrées joueur (clavier + clic planète) + feedback d’orientation */}
-        <PlayerInput
-          RADIUS={RADIUS}
-          worldQuatRef={worldQuatRef}
-          targetQuatRef={targetQuatRef}
-        />
-
+        
         {/* Ta scène 3D : consomme navTarget + refs (worldQuatRef / zoomRef) */}
         <Scene
           RADIUS={RADIUS}

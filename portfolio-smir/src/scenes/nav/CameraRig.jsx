@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { clamp, lerp } from "@/utils/math3d";
 
 export default function CameraRig({ RADIUS, zoomRef }) {
-  const { camera, gl } = useThree();
+  const { camera } = useThree();
   const targetNear = useRef(new THREE.Vector3(0, 0.25, RADIUS));
   const targetFar = useRef(new THREE.Vector3(0, 0.0, 0.0));
   const zSmooth = useRef(0.25);
@@ -17,7 +17,6 @@ export default function CameraRig({ RADIUS, zoomRef }) {
 
   useEffect(() => {
     const onWheel = (e) => {
-      // important pour empêcher le scroll de la page
       e.preventDefault();
       const delta = e.deltaY;
       const step = 0.06;
@@ -28,17 +27,10 @@ export default function CameraRig({ RADIUS, zoomRef }) {
       );
       if (zoomRef) zoomRef.current = zSmooth.current;
     };
-
-    const el = gl?.domElement;
-    el && el.addEventListener("wheel", onWheel, { passive: false });
-    // écoute globale pour les zones UI qui recouvrent le canvas
+    // Une seule écoute globale
     window.addEventListener("wheel", onWheel, { passive: false });
-
-    return () => {
-      el && el.removeEventListener("wheel", onWheel);
-      window.removeEventListener("wheel", onWheel);
-    };
-  }, [gl, zoomRef]);
+    return () => window.removeEventListener("wheel", onWheel);
+  }, [zoomRef]);
 
   useEffect(() => {
     const onKey = (e) => {

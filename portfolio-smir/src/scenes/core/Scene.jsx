@@ -21,10 +21,12 @@ import ClickAim from "@/scenes/nav/ClickAim";
 import CameraRig from "@/scenes/nav/CameraRig";
 import { clamp, angleBetween } from "@/utils/math3d";
 
-const ACCEL = 2.6, DAMP = 2.0, MAX_SPEED = 2.1, STEER = 3.6;
-const JUMP_V = 1.12, GRAV = 1.5, ALT_DAMP = 1.6;
-const ROCK_COUNT = 280, SURF_PARTICLES = 520, BELT_PARTS = 360, SAT_COUNT = 7;
-const ENTER_OPEN = 0.20;
+import {
+ACCEL, DAMP, MAX_SPEED, STEER, 
+JUMP_V, GRAV , ALT_DAMP, 
+ROCK_COUNT, SURF_PARTICLES, BELT_PARTS , SAT_COUNT,
+ENTER_OPEN,
+} from "@/constants/space";
 
 export default function Scene({
   RADIUS,

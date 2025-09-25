@@ -248,25 +248,7 @@ export default function Landing({ onEnter }) {
       aria-label="Landing overlay"
       style={{ pointerEvents: "auto" }}
     >
-      <style>{`
-        .landing-canvas { position:absolute; inset:0; z-index:1002; pointer-events:none; }
-        .split-pane { position:absolute; top:0; bottom:0; width:50%; background:linear-gradient(90deg, rgba(7,11,22,0.75), rgba(10,14,22,0.45)); transition:transform 0.9s cubic-bezier(0.2, 0.9, 0.2, 1), opacity 0.6s ease; z-index:1001; pointer-events:none; will-change:transform, opacity; }
-        .split-pane.left { left:0; transform:translateX(0); }
-        .split-pane.right { right:0; transform:translateX(0); }
-        .launching .split-pane.left { transform:translateX(-110%); opacity:0; }
-        .launching .split-pane.right { transform:translateX(110%); opacity:0; }
-        .landing-center-wrap { position:relative; z-index:1003; display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
-        .landing-center { width:100%; max-width:980px; padding:3rem 1.5rem; margin:0 auto; text-align:center; display:flex; flex-direction:column; align-items:center; gap:1rem; will-change:transform, opacity; }
-        #landing-overlay::before { content:""; position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(10,14,22,0.0) 35%, rgba(4,6,10,0.6) 100%); pointer-events:none; transition:opacity 0.9s ease; will-change:opacity; z-index:999; }
-        .btn-glass { background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.06); backdrop-filter: blur(6px) saturate(110%); padding:0.6rem 1.15rem; border-radius:12px; color:#e6f0ff; font-weight:600; box-shadow:0 6px 18px rgba(2,8,23,0.6); transition: transform 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease; cursor:pointer; outline:none; user-select:none; }
-        .btn-glass:hover { transform: translateY(-3px) scale(1.01); box-shadow: 0 10px 30px rgba(3,12,35,0.7); }
-        .btn-glass:active { transform: translateY(-1px) scale(0.998); }
-        .btn-glass:focus-visible { box-shadow: 0 6px 18px rgba(2,8,23,0.6), 0 0 0 2px rgba(96,165,250,0.5); }
-        .launching #landing-overlay::before { opacity:0; }
-        .launching .landing-center { transform: translateY(-18vh) scale(0.98); opacity:0; transition: transform 1.2s cubic-bezier(0.2, 0.9, 0.2, 1), opacity 0.9s ease; }
-        @media (max-width: 640px) { .landing-center { padding: 2rem 1rem; } h1 { font-size: 1.85rem !important; } }
-        @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
-      `}</style>
+      
 
       {/* Canvas 3D — visible pendant l’anim */}
       <div className="landing-canvas">
@@ -335,8 +317,7 @@ export default function Landing({ onEnter }) {
             Welcome to <span style={{ color: "#60a5fa" }}>Sagar.io</span>
           </h1>
 
-          <p
-            style={{
+          <p style={{
               maxWidth: 820,
               color: "rgba(226,236,255,0.88)",
               marginTop: 6,
