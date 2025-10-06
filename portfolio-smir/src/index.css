@@ -10,14 +10,14 @@
   src: url("/fonts/Orbitron-SemiBold.woff2") format("woff2");
   font-weight: 600;
   font-style: normal;
-  font-display: swap;
+  
 }
 @font-face {
   font-family: "InterLocal";
   src: url("/fonts/Inter-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  
 }
 
 /* =========================
@@ -184,35 +184,6 @@ h3,
   pointer-events: auto;
   user-select: none;
 }
-.minimap-fixed {
-  position: fixed;
-  bottom: 16px;
-  right: 16px;
-  z-index: 90;
-  will-change: transform;
-  transform: translateZ(0);
-  contain: strict;
-  isolation: isolate;
-  border: 1px solid var(--glass-border);
-  background: linear-gradient(
-    180deg,
-    rgba(15, 23, 42, 0.75),
-    rgba(2, 6, 23, 0.75)
-  );
-  backdrop-filter: var(--blur-normal);
-  -webkit-backdrop-filter: var(--blur-normal);
-  border-radius: 14px;
-  padding: 8px;
-  pointer-events: auto;
-}
-.minimap-fixed canvas {
-  width: 180px;
-  height: 180px;
-  display: block;
-  border-radius: 8px;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-}
 
 /* =========================
    Composants UI optimisés
@@ -253,47 +224,6 @@ h3,
 }
 
 /* =========================
-   Modal et overlays
-   ========================= */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1100;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: var(--blur-light);
-  -webkit-backdrop-filter: var(--blur-light);
-  will-change: opacity;
-  contain: strict;
-  opacity: 0;
-  transition: opacity var(--transition-normal) ease-out;
-}
-.modal-backdrop.open {
-  opacity: 1;
-}
-.modal-content {
-  position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
-  margin: auto;
-  background: linear-gradient(180deg, var(--glass-from), var(--glass-to));
-  border: 1px solid var(--glass-border);
-  backdrop-filter: var(--blur-heavy);
-  -webkit-backdrop-filter: var(--blur-heavy);
-  border-radius: 16px;
-  will-change: transform, opacity;
-  transform: translateZ(0);
-  contain: layout style;
-  opacity: 0;
-  transform: scale(0.9) translateZ(0);
-  transition: transform var(--transition-normal) var(--ease-out-expo),
-    opacity var(--transition-normal) ease-out;
-}
-.modal-content.open {
-  opacity: 1;
-  transform: scale(1) translateZ(0);
-}
-
-/* =========================
    Utilities optimisées
    ========================= */
 .no-select {
@@ -326,45 +256,12 @@ h3,
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  .split-pane,
-  .btn-glass,
-  .modal-content,
-  .modal-backdrop {
-    transition: none !important;
-  }
 }
 @media (max-width: 768px) {
   .top-nav-glass {
     top: 8px;
     left: 8px;
     right: 8px;
-  }
-  .minimap-fixed {
-    bottom: 8px;
-    right: 8px;
-  }
-  .minimap-fixed canvas {
-    width: 120px;
-    height: 120px;
-  }
-}
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  .minimap-fixed canvas {
-    image-rendering: -webkit-optimize-contrast;
-  }
-}
-@media (hover: none) and (pointer: coarse) {
-  .btn-glass:hover {
-    transform: none;
-    box-shadow: none;
-  }
-  .btn-glass:active {
-    transform: scale(0.98);
-    background: linear-gradient(
-      180deg,
-      rgba(30, 41, 59, 0.8),
-      rgba(2, 6, 23, 0.8)
-    );
   }
 }
 

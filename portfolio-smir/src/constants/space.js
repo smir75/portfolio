@@ -9,4 +9,4 @@ export const SURF_PARTICLES  = DEV ? 320 : 520;
 export const BELT_PARTS      = DEV ? 240 : 360;
 export const SAT_COUNT       = DEV ? 5   : 7;
 
-export const HOLO_ON = 0.20, HOLO_START = 0.50, ENTER_OPEN = 0.20;
+export const HOLO_ON = 0.20, HOLO_START = 1.50, ENTER_OPEN = 2;

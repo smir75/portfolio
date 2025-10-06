@@ -8,100 +8,64 @@ import { BASE_RADIUS } from "@/constants/space";
 
 import Scene from "@/scenes/core/Scene";
 import OverlayUI from "@/scenes/ui/OverlayUI";
-import Modal from "@/scenes/ui/Modal";
 import TopNav from "@/scenes/ui/TopNav";
 import buildStations from "@/scenes/stations/buildStations";
 
-
-
-
-export default function MoonScene() {
+export default function MoonScene({ onOpenStation }) {
   const { settings } = useSettings();
 
-  // État UI
-  const [modal, setModal] = useState({ open: false, id: null });
   const [navTarget, setNavTarget] = useState(null);
-
-  // Clé de remount Canvas (utile après "context lost" en dev)
   const [canvasKey, setCanvasKey] = useState(0);
 
-  // Paramètres scène
   const RADIUS = BASE_RADIUS;
   const stationsForUI = useMemo(() => buildStations(RADIUS), [RADIUS]);
 
-  // Orientation du monde :
-  
   const worldQuatRef = useRef(new THREE.Quaternion());
-
-  // Zoom caméra (consommé par Scene)
   const zoomRef = useRef(0.25);
-
-  // Évite remounts à l’infini si le contexte WebGL se perd plusieurs fois
   const lostOnceRef = useRef(false);
 
-  /* -----------------------------------------
-     onCanvasCreated
-     - règle les options de rendu
-     - capte "webglcontextlost" en *capture* pour éviter les logs bruyants
-       et remonter proprement le Canvas une seule fois en dev
-     ----------------------------------------- */
   const onCanvasCreated = useCallback(({ camera, gl }) => {
     camera.lookAt(0, 0, 0);
-
     gl.setClearColor("#050a16", 1);
     gl.shadowMap.enabled = false;
-    gl.domElement.style.pointerEvents = "auto";
-
-    // Qualité colorimétrique correcte
     gl.outputColorSpace = THREE.SRGBColorSpace;
     gl.toneMapping = THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = 1.0;
 
     const canvas = gl.domElement;
-
-    // ⚠️ Capture AVANT Three : évite le message "THREE.WebGLRenderer: Context Lost."
     const onLostCapture = (e) => {
       e.preventDefault();
-      e.stopImmediatePropagation(); // coupe le handler interne de Three
+      e.stopImmediatePropagation();
       if (lostOnceRef.current) return;
       lostOnceRef.current = true;
-      // Remount unique (utile en dev pour repartir proprement)
+      // Recrée le Canvas si le contexte WebGL est perdu une fois
       setTimeout(() => setCanvasKey((k) => k + 1), 0);
     };
-
-    const onRestored = () => {
-      // Après restauration, on reset l’état GL si dispo (optionnel)
-      try { gl.resetState(); } catch {}
-    };
+    const onRestored = () => { try { gl.resetState(); } catch {} };
 
     canvas.addEventListener("webglcontextlost", onLostCapture, { capture: true, passive: false });
     canvas.addEventListener("webglcontextrestored", onRestored, { passive: true });
 
-    // ✅ cleanup propre à l’unmount
     return () => {
-      // Important: passer "true" pour retirer un listener enregistré avec { capture:true }
       canvas.removeEventListener("webglcontextlost", onLostCapture, true);
       canvas.removeEventListener("webglcontextrestored", onRestored);
     };
   }, []);
 
-  // Handlers UI
-  const handleModalClose   = useCallback(() => setModal({ open: false, id: null }), []);
-  const handleNavTarget    = useCallback((id) => setNavTarget(id), []);
-  const handleNavConsumed  = useCallback(() => setNavTarget(null), []);
-  const handleOpenStation  = useCallback((id) => setModal({ open: true, id }), []);
+  const handleNavTarget   = useCallback((id) => setNavTarget(id), []);
+  const handleNavConsumed = useCallback(() => setNavTarget(null), []);
 
   return (
     <div className="fixed inset-0 bg-black">
-      {/* === Navbar fixe en haut (DOM normal, hors Canvas) === */}
+      {/* Top navigation (focus via navTarget) */}
       <div className="fixed inset-x-0 top-0 z-[120] pointer-events-auto">
         <TopNav stations={stationsForUI} onGo={handleNavTarget} />
       </div>
 
-      {/* === Canvas 3D principal === */}
+      {/* 3D Canvas */}
       <Canvas
         key={canvasKey}
-        dpr={[1, 2]}             // Retina okay
+        dpr={[1, 2]}
         shadows={false}
         gl={{
           antialias: true,
@@ -116,13 +80,11 @@ export default function MoonScene() {
         onCreated={onCanvasCreated}
         style={{ width: "100vw", height: "100vh", zIndex: 0, display: "block" }}
       >
-        
-        {/* Ta scène 3D : consomme navTarget + refs (worldQuatRef / zoomRef) */}
         <Scene
           RADIUS={RADIUS}
           navTarget={navTarget}
           onNavConsumed={handleNavConsumed}
-          onOpenStation={handleOpenStation}
+          onOpenStation={onOpenStation}            // ⬅️ routing via App.jsx
           quality={settings.quality}
           reduceMotion={settings.reduceMotion || settings.presentation}
           highContrast={settings.highContrast}
@@ -131,56 +93,8 @@ export default function MoonScene() {
         />
       </Canvas>
 
-      {/* === Overlay DOM (portal) : bouton Réglages + badge === */}
+      {/* Overlay DOM (paramètres, badge, etc.) */}
       <OverlayUI />
-
-      {/* === Modale d’infos === */}
-      <Modal
-        open={modal.open}
-        title={
-          modal.id === "projets"     ? "Projets" :
-          modal.id === "competences" ? "Compétences" :
-          modal.id === "parcours"    ? "Parcours" :
-          modal.id === "contact"     ? "Contact" :
-          modal.id === "bts"         ? "BTS / Référentiel" : ""
-        }
-        onClose={handleModalClose}
-      >
-        {modal.id === "projets" && (
-          <ul className="pl-5 space-y-1 list-disc">
-            <li>Intranet AD/LDAP + AS400 (Laravel / Vue 3)</li>
-            <li>API REST sécurisée (Laravel Sanctum)</li>
-            <li>Scripts d’automatisation Python (backup, ETL)</li>
-            <li>Site vitrine (Tailwind / Vite)</li>
-          </ul>
-        )}
-        {modal.id === "competences" && (
-          <ul className="pl-5 space-y-1 list-disc">
-            <li>PHP (Laravel), JavaScript (Vue/React)</li>
-            <li>SQL (MariaDB), Modélisation</li>
-            <li>Git, Docker, Linux/WSL2</li>
-            <li>CI/CD (GitLab CI / GitHub Actions)</li>
-          </ul>
-        )}
-        {modal.id === "parcours" && (
-          <div>
-            <p><strong>BTS SIO – SLAM</strong> (2024–2026)</p>
-            <p>Alternance : intranet (AD, AS400, sécurité…)</p>
-          </div>
-        )}
-        {modal.id === "contact" && (
-          <div>
-            <p>LinkedIn • GitHub • Mail</p>
-            <p className="text-sm text-slate-400">Formulaire à venir</p>
-          </div>
-        )}
-        {modal.id === "bts" && (
-          <div>
-            <p><strong>Référentiel BTS SIO</strong> — liens entre E4/E5 et tes projets, compétences validées, etc.</p>
-            <p className="text-sm text-slate-400">À brancher sur un JSON plus tard.</p>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }
