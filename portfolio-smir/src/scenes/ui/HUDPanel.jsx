@@ -53,6 +53,11 @@ export default function HUDPanel({
    onPointerOver: () => setHot(true),
    onPointerOut:  () => setHot(false),
    
+   onPointerDown: (e) => { 
+    e.stopPropagation(); 
+    e.nativeEvent?.stopImmediatePropagation?.(); 
+  },
+   
    onClick: (e) => (e?.detail >= 2 ? handleOpen(e) : handleFocus(e)),
    onDoubleClick: handleOpen, 
  };

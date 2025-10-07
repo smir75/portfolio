@@ -1,5 +1,5 @@
 // src/scene/MoonScene.jsx
-import React, { useMemo, useRef, useState, useCallback } from "react";
+import React, { useMemo, useRef, useState, useCallback, useEffect, Suspense, lazy } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 
@@ -22,9 +22,13 @@ export default function MoonScene({ onOpenStation }) {
 
   const worldQuatRef = useRef(new THREE.Quaternion());
   const zoomRef = useRef(0.25);
+
+  // refs pour gérer proprement les listeners Canvas
+  const glRef = useRef(null);
   const lostOnceRef = useRef(false);
 
   const onCanvasCreated = useCallback(({ camera, gl }) => {
+    // setup caméra + GL
     camera.lookAt(0, 0, 0);
     gl.setClearColor("#050a16", 1);
     gl.shadowMap.enabled = false;
@@ -32,16 +36,27 @@ export default function MoonScene({ onOpenStation }) {
     gl.toneMapping = THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = 1.0;
 
+    // garde une ref vers le renderer pour brancher les listeners dans un useEffect (cleanup garanti)
+    glRef.current = gl;
+  }, []);
+
+  // Listeners robustes sur perte/restauration du contexte WebGL (avec cleanup)
+  useEffect(() => {
+    const gl = glRef.current;
+    if (!gl) return;
+
     const canvas = gl.domElement;
     const onLostCapture = (e) => {
       e.preventDefault();
       e.stopImmediatePropagation();
       if (lostOnceRef.current) return;
       lostOnceRef.current = true;
-      // Recrée le Canvas si le contexte WebGL est perdu une fois
+      // on recree le canvas proprement
       setTimeout(() => setCanvasKey((k) => k + 1), 0);
     };
-    const onRestored = () => { try { gl.resetState(); } catch {} };
+    const onRestored = () => {
+      try { gl.resetState(); } catch {}
+    };
 
     canvas.addEventListener("webglcontextlost", onLostCapture, { capture: true, passive: false });
     canvas.addEventListener("webglcontextrestored", onRestored, { passive: true });
@@ -50,7 +65,7 @@ export default function MoonScene({ onOpenStation }) {
       canvas.removeEventListener("webglcontextlost", onLostCapture, true);
       canvas.removeEventListener("webglcontextrestored", onRestored);
     };
-  }, []);
+  }, [canvasKey]); // se rebranche sur chaque nouveau canvas
 
   const handleNavTarget   = useCallback((id) => setNavTarget(id), []);
   const handleNavConsumed = useCallback(() => setNavTarget(null), []);
@@ -65,7 +80,7 @@ export default function MoonScene({ onOpenStation }) {
       {/* 3D Canvas */}
       <Canvas
         key={canvasKey}
-        dpr={[1, 2]}
+        dpr={[1, 1.75]}             // DPR un peu bridé = perf + stable
         shadows={false}
         gl={{
           antialias: true,
@@ -84,7 +99,7 @@ export default function MoonScene({ onOpenStation }) {
           RADIUS={RADIUS}
           navTarget={navTarget}
           onNavConsumed={handleNavConsumed}
-          onOpenStation={onOpenStation}            // ⬅️ routing via App.jsx
+          onOpenStation={onOpenStation}
           quality={settings.quality}
           reduceMotion={settings.reduceMotion || settings.presentation}
           highContrast={settings.highContrast}

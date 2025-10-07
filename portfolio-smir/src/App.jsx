@@ -5,6 +5,7 @@ import {
   createBrowserRouter,
   Outlet,
   useNavigate,
+  useLocation,   // ← on regroupe ici
 } from "react-router-dom";
 import { SettingsProvider } from "./state/settings.jsx";
 
@@ -20,26 +21,29 @@ import Projets from "./pages/Projets.jsx";
 // Scène 3D (lazy)
 const MoonScene = lazy(() => import("./scene/MoonScene.jsx"));
 
-/** Shell racine : overlay + scène + Outlet pour les pages */
+/** Shell racine : overlay + scène + pages (Outlet) */
 function Root() {
   const [entered, setEntered] = useState(false);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isHome = pathname === "/";
 
   // Précharge la scène après le premier rendu
   useEffect(() => {
     import("./scene/MoonScene.jsx").catch(() => {});
   }, []);
 
-  // Mapping stationId -> route
+  // Mapping stationId -> route (IDs normalisés en minuscule)
   const handleOpenStation = useCallback(
     (id) => {
+      const key = String(id || "").toLowerCase();
       const route = {
         bts: "/BTS",
         competences: "/Competences",
         contact: "/Contact",
         parcours: "/Parcours",
         projets: "/Projets",
-      }[id];
+      }[key];
 
       if (route) navigate(route);
       else console.warn("[App] Unknown station id:", id);
@@ -49,12 +53,12 @@ function Root() {
 
   return (
     <SettingsProvider>
-      {/* Accueil / overlay */}
-      {!entered && <Landing onEnter={() => setEntered(true)} />}
+      {/* Landing UNIQUEMENT sur la home (sinon ça couvre tes pages internes) */}
+      {!entered && isHome && <Landing onEnter={() => setEntered(true)} />}
 
-      {/* Scène 3D */}
+      {/* Scène 3D : UNIQUEMENT sur “/” */}
       <div className="w-full h-full">
-        {entered && (
+        {entered && isHome && (
           <Suspense
             fallback={
               <div
@@ -68,29 +72,27 @@ function Root() {
         )}
       </div>
 
-      {/* Pages rendues au-dessus de la scène */}
-      <Outlet />
+      {/* Pages : layer au-dessus du canvas (voir #page-layer dans index.css) */}
+      <div id="page-layer" data-active={!isHome}>
+        <Outlet />
+      </div>
     </SettingsProvider>
   );
 }
 
-// Déclaration des routes (identiques à tes paths)
+// Déclaration des routes
 const router = createBrowserRouter([
   {
     path: "/",
     element: <Root />,
     children: [
-      // Home “vide” (Landing gère l’entrée)
-      { index: true, element: <></> },
-
+      { index: true, element: <></> }, // Home "vide" : la Landing/Scène gère l'affichage
       { path: "BTS", element: <BTS /> },
       { path: "Competences", element: <Competences /> },
       { path: "Contact", element: <Contact /> },
       { path: "Parcours", element: <Parcours /> },
       { path: "Projets", element: <Projets /> },
-
-      // Facultatif : 404
-      // { path: "*", element: <NotFound /> },
+      // { path: "*", element: <NotFound /> }, // optionnel
     ],
   },
 ]);
@@ -100,7 +102,6 @@ export default function App() {
     <RouterProvider
       router={router}
       future={{
-        // Active les comportements de la v7 dès maintenant
         v7_startTransition: true,
         v7_relativeSplatPath: true,
       }}
