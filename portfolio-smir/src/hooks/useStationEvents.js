@@ -9,20 +9,29 @@ const OPEN_TIMEOUT_MS = 5000;
 export default function useStationEvents({
   STATIONS,
   qWorldRef,
-  stationDirWorld,   // ⚠️ ICI: doit être en repère MONDE (SPIN puis qWorld)
+  stationDirWorld,   // ⚠️ doit être en repère MONDE (SPIN puis qWorld)
   aimToStation,
   stopAiming,
   onOpenStation,
-  openThresholdRad = 0.08, // rad (~2.8°)
+  openThresholdRad = 0.08, // ~4.6°, très précis
   focusedIdRef,
 }) {
-  const cosOpen = Math.cos(openThresholdRad);
+  // Valeur par défaut (utilisée si pas de st.openRadius)
+  const defaultCosOpen = Math.cos(openThresholdRad);
 
   const localFocusedRef = useRef(null);
   const focusRef        = focusedIdRef ?? localFocusedRef;
   const awaitingOpenRef = useRef(null);
   const justOpenedRef   = useRef(false);
   const navigatingRef   = useRef(false);
+
+  // Dwell (latence de stabilité dans le cône)
+  const insideSinceRef  = useRef(null);
+  const DWELL_MS        = 140;
+
+  // Lissage du dot
+  const smoothDotRef    = useRef(null);
+  const ALPHA           = 0.25; // poids du lissage
 
   const setNavigating = useCallback((v) => {
     navigatingRef.current = !!v;
@@ -41,6 +50,7 @@ export default function useStationEvents({
   }), []);
 
   const getForwardW = useCallback(() => {
+    // Avant fixe du repère astronaute
     return TMP.forward.set(0, 0, 1);
   }, [TMP]);
 
@@ -90,7 +100,7 @@ export default function useStationEvents({
       const id = event?.detail?.id;
       if (!id) return;
       dbg("listener saga-focus-station", { id });
-      focusStation(id); // focus sec
+      focusStation(id);
     };
 
     const onOpen = (event) => {
@@ -99,7 +109,7 @@ export default function useStationEvents({
       if (!id) return;
       const timeout = typeof event?.detail?.timeout === "number" ? event.detail.timeout : undefined;
       dbg("listener saga-open-station", { id, timeout });
-      focusStation(id, { queueOpen: true, timeout }); // focus + queue open
+      focusStation(id, { queueOpen: true, timeout });
     };
 
     window.addEventListener("saga-focus-station", onFocus);
@@ -143,18 +153,30 @@ export default function useStationEvents({
     }
 
     const forwardW = getForwardW();
-    const dirW     = stationDirWorld(st.pos); // ✅ repère MONDE
-    const dot      = Math.max(-1, Math.min(1, forwardW.dot(dirW)));
+    const dirW = stationDirWorld(st.pos);
+    const rawDot = Math.max(-1, Math.min(1, forwardW.dot(dirW)));
 
-    logDot({ id: focusedId, dot: +dot.toFixed(3), need: +cosOpen.toFixed(3) });
+    // Lissage EMA
+    if (smoothDotRef.current == null) smoothDotRef.current = rawDot;
+    smoothDotRef.current = smoothDotRef.current + ALPHA * (rawDot - smoothDotRef.current);
+    const dot = smoothDotRef.current;
 
-    if (dot >= cosOpen) {
+    const cosLocal = Math.cos(st.openRadius ?? openThresholdRad);
+    logDot({ id: focusedId, dot: +dot.toFixed(3), need: +cosLocal.toFixed(3) });
+
+    // Condition d'ouverture avec latence (DWELL)
+    if (dot >= cosLocal) {
+      if (insideSinceRef.current == null) insideSinceRef.current = now;
+      if (now - insideSinceRef.current < DWELL_MS) return; // attendre stabilité
+
       if (justOpenedRef.current) {
         dbg("open blocked: justOpenedRef already true");
         clearPendingOpen();
         return;
       }
+
       justOpenedRef.current = true;
+      insideSinceRef.current = null;
       clearPendingOpen();
       stopAiming?.();
       setNavigating(true);
@@ -168,7 +190,9 @@ export default function useStationEvents({
         dbg("onOpenStation threw", err);
       } finally {
         try {
-          window.dispatchEvent(new CustomEvent("saga-station-opened", { detail: { id: focusedId } }));
+          window.dispatchEvent(
+            new CustomEvent("saga-station-opened", { detail: { id: focusedId } })
+          );
           dbg("DISPATCH saga-station-opened", { id: focusedId });
         } catch (e) {
           dbg("dispatch saga-station-opened failed", e);
@@ -179,6 +203,9 @@ export default function useStationEvents({
           dbg("navigation reset");
         }, 1000);
       }
+    } else {
+      // Sorti du cône → reset latence
+      if (insideSinceRef.current != null) insideSinceRef.current = null;
     }
   });
 

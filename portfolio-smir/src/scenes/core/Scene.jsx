@@ -32,6 +32,7 @@ import Settlements from "@/scenes/cities/Settlements";
 import PointerOrbit from "@/scenes/nav/PointerOrbit";
 import CameraRig from "@/scenes/nav/CameraRig";
 
+
 import { clamp } from "@/utils/math3d";
 import { ROCK_COUNT, SURF_PARTICLES, BELT_PARTS, SAT_COUNT, ENTER_OPEN } from "@/constants/space";
 
@@ -52,6 +53,7 @@ export default function Scene({
   worldQuatRef,
   zoomRef,
   focusedStationIdRef, // 🔹 ref externe (MoonScene) pour persister le focus
+  uiBlocked = false,  
 }) {
   useThree();
   const input = useInput();
@@ -222,13 +224,13 @@ export default function Scene({
         qWorldRef={qWorldRef}
         sensitivity={0.003}
         deadZone={3}
-        enabled={true}
+        enabled={!uiBlocked}
+        
         inertia
         damping={4}
         invertPitch
       />
-
-      <CameraRig RADIUS={RADIUS} zoomRef={zoomOutRef} />
+      <CameraRig RADIUS={RADIUS} zoomRef={zoomOutRef} controlsEnabled={!uiBlocked} />
     </>
   );
 }

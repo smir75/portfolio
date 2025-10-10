@@ -1,35 +1,94 @@
 // src/scenes/ui/TopNav.jsx
 import React, { useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { dbg } from "@/utils/debug";
 
 export default function TopNav({ stations = [] }) {
-    const openQueued = useCallback((id) => {
-    dbg("TopNav click → saga-open-station (queue)", { id });
-    // Focus + queue open (ouvrira automatiquement quand aligné)
-    window.dispatchEvent(new CustomEvent("saga-open-station", { detail: { id, timeout: 8000 } }));
-  }, []);
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  const openQueued = useCallback(
+    (id) => {
+      dbg("TopNav click", { id, from: pathname });
+
+      // 1) Si on n'est pas sur la Home, on ferme la page en cours
+      //    en revenant sur "/" pour voir la planète derrière.
+      if (pathname !== "/") {
+        // Optionnel: stop/clear focus en cours (propre)
+        try {
+          window.dispatchEvent(
+            new CustomEvent("saga-focus-station", { detail: { id: null } })
+          );
+        } catch {}
+
+        navigate("/");
+
+        // 2) Puis on queue l'ouverture à la frame suivante
+        //    (la scène est visible, l'alignement démarre)
+        requestAnimationFrame(() => {
+          dbg("TopNav → saga-open-station (queued after close)", { id });
+          window.dispatchEvent(
+            new CustomEvent("saga-open-station", {
+              detail: { id, timeout: 8000 },
+            })
+          );
+        });
+      } else {
+        // Déjà sur la Home → pas besoin de fermer, on queue direct
+        dbg("TopNav → saga-open-station (direct)", { id });
+        window.dispatchEvent(
+          new CustomEvent("saga-open-station", { detail: { id, timeout: 8000 } })
+        );
+      }
+    },
+    [pathname, navigate]
+  );
 
   return (
-    <div className="max-w-5xl px-3 py-2 mx-auto" data-ui-block-enter>
-      <div className="flex items-center justify-between px-3 py-2 border shadow-lg rounded-2xl border-slate-700/60 bg-slate-900/80 backdrop-blur-md">
-        <div className="font-semibold tracking-wide text-slate-200">S.MIR — Portfolio</div>
-        <nav className="flex gap-1 sm:gap-2">
+    <div className="max-w-5xl px-3 py-2 mx-auto top-nav-glass" data-ui-block-enter>
+      <div className="flex items-center justify-between px-3 py-2 border shadow-lg rounded-2xl border-slate-700/60 bg-slate-900/20 backdrop-blur-md">
+        {/* Brand */}
+        <div className="brand-chip no-select">
+          <span className="brand-dot" />
+          <span className="brand-text font-orbitron">S.MIR — Portfolio</span>
+          <span className="brand-sub">orbit-ui</span>
+        </div>
+
+        {/* Nav */}
+        <nav className="nav-rail">
           {stations.map((s) => (
             <button
               key={s.id}
               type="button"
               title={`Aller à ${s.label}`}
-              className="px-3 py-1.5 text-sm rounded-lg border border-slate-700/60 bg-slate-800/70 text-slate-100 hover:bg-slate-700/70 transition"
-              onClick={(e) => { e.stopPropagation(); openQueued(s.id); }}   
+              className="topnav-item"
+              data-active={
+                // état actif visuel si la route correspond (confort)
+                (pathname === "/Projets"     && s.id === "projets")     ||
+                (pathname === "/Competences" && s.id === "competences") ||
+                (pathname === "/Parcours"    && s.id === "parcours")    ||
+                (pathname === "/Contact"     && s.id === "contact")     ||
+                (pathname === "/BTS"         && s.id === "bts")
+                  ? "true"
+                  : "false"
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                openQueued(s.id);
+              }}
               onKeyDown={(e) => {
-                // ❌ pas d’Enter/Espace qui ouvre ici
+                // on évite Enter/Espace qui peuvent déclencher un "click" navigateur
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   e.stopPropagation();
                 }
               }}
             >
-              {s.short}
+              <span className="topnav-pill">
+                <span className="topnav-dot" aria-hidden />
+                <span className="topnav-text font-orbitron">{s.short}</span>
+              </span>
+              <span className="topnav-underline" aria-hidden />
             </button>
           ))}
         </nav>

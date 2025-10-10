@@ -7,17 +7,19 @@ import { useSettings } from "@/state/settings.jsx";
 import { BASE_RADIUS } from "@/constants/space";
 
 import Scene from "@/scenes/core/Scene";
-import OverlayUI from "@/scenes/ui/OverlayUI";
-import TopNav from "@/scenes/ui/TopNav";
 import buildStations from "@/scenes/stations/buildStations";
 
-export default function MoonScene({ onOpenStation }) {
+export default function MoonScene({
+  onOpenStation,
+  uiBlocked = false,
+  reduceMotion,
+  quality,
+}) {
   const { settings } = useSettings();
 
   const [canvasKey, setCanvasKey] = useState(0);
 
   const RADIUS = BASE_RADIUS;
-  // ✅ Génère UNE FOIS la liste des stations
   const stations = useMemo(() => buildStations(RADIUS), [RADIUS]);
 
   const worldQuatRef = useRef(new THREE.Quaternion());
@@ -49,7 +51,9 @@ export default function MoonScene({ onOpenStation }) {
       lostOnceRef.current = true;
       setTimeout(() => setCanvasKey((k) => k + 1), 0);
     };
-    const onRestored = () => { try { gl.resetState(); } catch {} };
+    const onRestored = () => {
+      try { gl.resetState(); } catch {}
+    };
 
     canvas.addEventListener("webglcontextlost", onLostCapture, { capture: true, passive: false });
     canvas.addEventListener("webglcontextrestored", onRestored, { passive: true });
@@ -62,11 +66,6 @@ export default function MoonScene({ onOpenStation }) {
 
   return (
     <div className="fixed inset-0 bg-black">
-      <div className="fixed inset-x-0 top-0 z-[120] pointer-events-auto">
-        {/* ✅ Passe la même liste à l’UI */}
-        <TopNav stations={stations} />
-      </div>
-
       <Canvas
         key={canvasKey}
         dpr={[1, 1.75]}
@@ -84,20 +83,19 @@ export default function MoonScene({ onOpenStation }) {
         onCreated={onCanvasCreated}
         style={{ width: "100vw", height: "100vh", zIndex: 0, display: "block" }}
       >
-        {/* ✅ Passe la même liste à la scène */}
         <Scene
           RADIUS={RADIUS}
           stations={stations}
           onOpenStation={onOpenStation}
-          quality={settings.quality}
-          reduceMotion={settings.reduceMotion || settings.presentation}
+          quality={quality ?? settings.quality}
+          
+          reduceMotion={(reduceMotion ?? settings.reduceMotion) || settings.presentation}
           highContrast={settings.highContrast}
           worldQuatRef={worldQuatRef}
           zoomRef={zoomRef}
+          uiBlocked={uiBlocked}   // ✅ bloque l’interaction quand on est sur une page
         />
       </Canvas>
-
-      <OverlayUI />
     </div>
   );
 }
