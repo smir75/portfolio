@@ -1,31 +1,39 @@
 // src/scenes/stations/Stations.jsx
 import React, { useMemo } from "react";
-import StationDome from "./StationDome";
-import StationTower from "./StationTower";
-import StationDish from "./StationDish";
-import StationRingHab from "./StationRingHab";
-import buildStations from "./buildStations";
+import buildStations from "@/scenes/stations/buildStations";
+import StationDish from "@/scenes/stations/StationDish";
+import StationDome from "@/scenes/stations/StationDome";
+import StationRingHab from "@/scenes/stations/StationRingHab";
+import StationTower from "@/scenes/stations/StationTower";
+import RotatingRing from "@/scenes/stations/RotatingRing";
 
-export default function Stations({ RADIUS, qWorldRef, spinYRef, onFocus, highContrast }) {
-  const STATIONS = useMemo(() => buildStations(RADIUS), [RADIUS]);
+export default function Stations({
+  RADIUS,
+  qWorldRef,
+  spinYRef,
+  onFocus,
+  highContrast,
+  stations,             // ✅ nouvelle prop optionnelle
+}) {
+  // ✅ si on reçoit stations, on les utilise; sinon fallback (compat)
+  const STATIONS = useMemo(
+    () => stations ?? buildStations(RADIUS),
+    [stations, RADIUS]
+  );
+
   return (
     <group>
-      {STATIONS.map((s) => (
-        <React.Fragment key={s.id}>
-          {s.type === "dome"  && (
-            <StationDome    s={s} qWorldRef={qWorldRef} spinYRef={spinYRef} onFocus={onFocus} highContrast={highContrast} />
-          )}
-          {s.type === "tower" && (
-            <StationTower   s={s} qWorldRef={qWorldRef} spinYRef={spinYRef} onFocus={onFocus} highContrast={highContrast} />
-          )}
-          {s.type === "dish"  && (
-            <StationDish    s={s} qWorldRef={qWorldRef} spinYRef={spinYRef} onFocus={onFocus} highContrast={highContrast} />
-          )}
-          {s.type === "ring"  && (
-            <StationRingHab s={s} qWorldRef={qWorldRef} spinYRef={spinYRef} onFocus={onFocus} highContrast={highContrast} />
-          )}
-        </React.Fragment>
-      ))}
+      {STATIONS.map((s) => {
+        const common = { s, qWorldRef, spinYRef, onFocus, highContrast };
+        switch (s.type) {
+          case "dish":   return <StationDish key={s.id} {...common} />;
+          case "dome":   return <StationDome key={s.id} {...common} />;
+          case "ring":   return <StationRingHab key={s.id} {...common} />;
+          case "tower":  return <StationTower key={s.id} {...common} />;
+          case "rotor":  return <RotatingRing key={s.id} {...common} />;
+          default:       return <StationDish key={s.id} {...common} />;
+        }
+      })}
     </group>
   );
 }

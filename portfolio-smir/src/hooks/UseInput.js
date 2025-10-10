@@ -1,15 +1,6 @@
 // src/hooks/useInput.js
 import { useEffect, useState, useRef } from "react";
 
-/**
- * Hook d'input clavier unifié :
- * - ZQSD / WASD / Flèches pour le déplacement
- * - Espace = jump
- * - Shift = running
- * Notes :
- * - On empêche le scroll de la page pour Arrow/Espace
- * - On gère finement ShiftLeft/ShiftRight
- */
 export default function useInput() {
   const [state, setState] = useState({
     up: false,
@@ -20,11 +11,19 @@ export default function useInput() {
     running: false,
   });
 
-  // Pour éviter re-creations dans les handlers
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
 
   useEffect(() => {
+    const isTextTarget = (el) => {
+      if (!el) return false;
+      const tag = el.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || el.isContentEditable) return true;
+      // évite de capturer la barre d’espace sur des boutons
+      if (tag === "button" || tag === "a") return true;
+      return false;
+    };
+
     const preventScroll = (code) =>
       code === "ArrowUp" ||
       code === "ArrowDown" ||
@@ -32,44 +31,84 @@ export default function useInput() {
       code === "ArrowRight" ||
       code === "Space";
 
-    const onKeyDown = (e) => {
-      const { code } = e;
-      if (preventScroll(code)) e.preventDefault();
+    const setKey = (prev, key, value) => {
+      if (prev[key] === value) return prev;      // pas de re-render inutile
+      return { ...prev, [key]: value };
+    };
 
-      setState((s) => {
-        // mapping AZERTY / QWERTY / Flèches
-        const next = { ...s };
-        if (code === "KeyZ" || code === "KeyW" || code === "ArrowUp") next.up = true;
-        if (code === "KeyS" || code === "ArrowDown") next.down = true;
-        if (code === "KeyQ" || code === "KeyA" || code === "ArrowLeft") next.left = true;
-        if (code === "KeyD" || code === "ArrowRight") next.right = true;
-        if (code === "Space") next.jump = true;
-        if (code === "ShiftLeft" || code === "ShiftRight") next.running = true;
-        return next;
-      });
+    const mapDown = (code, prev) => {
+      switch (code) {
+        case "KeyZ":
+        case "KeyW":
+        case "ArrowUp":    return setKey(prev, "up", true);
+        case "KeyS":
+        case "ArrowDown":  return setKey(prev, "down", true);
+        case "KeyQ":
+        case "KeyA":
+        case "ArrowLeft":  return setKey(prev, "left", true);
+        case "KeyD":
+        case "ArrowRight": return setKey(prev, "right", true);
+        case "Space":      return setKey(prev, "jump", true);
+        case "ShiftLeft":
+        case "ShiftRight": return setKey(prev, "running", true);
+        default:           return prev;
+      }
+    };
+
+    const mapUp = (code, prev) => {
+      switch (code) {
+        case "KeyZ":
+        case "KeyW":
+        case "ArrowUp":    return setKey(prev, "up", false);
+        case "KeyS":
+        case "ArrowDown":  return setKey(prev, "down", false);
+        case "KeyQ":
+        case "KeyA":
+        case "ArrowLeft":  return setKey(prev, "left", false);
+        case "KeyD":
+        case "ArrowRight": return setKey(prev, "right", false);
+        case "Space":      return setKey(prev, "jump", false);
+        case "ShiftLeft":
+        case "ShiftRight": return setKey(prev, "running", false);
+        default:           return prev;
+      }
+    };
+
+    const onKeyDown = (e) => {
+      // ne bloque pas la saisie dans les champs
+      if (isTextTarget(e.target)) return;
+
+      // évite le scroll pour flèches/espace
+      if (preventScroll(e.code)) e.preventDefault();
+
+      // ignore l’auto-repeat
+      if (e.repeat) return;
+
+      setState((s) => mapDown(e.code, s));
     };
 
     const onKeyUp = (e) => {
-      const { code } = e;
-      setState((s) => {
-        const next = { ...s };
-        if (code === "KeyZ" || code === "KeyW" || code === "ArrowUp") next.up = false;
-        if (code === "KeyS" || code === "ArrowDown") next.down = false;
-        if (code === "KeyQ" || code === "KeyA" || code === "ArrowLeft") next.left = false;
-        if (code === "KeyD" || code === "ArrowRight") next.right = false;
-        if (code === "Space") next.jump = false;
-        if (code === "ShiftLeft" || code === "ShiftRight") next.running = false;
-        return next;
-      });
+      if (isTextTarget(e.target)) return;
+      setState((s) => mapUp(e.code, s));
     };
 
-    // Écoute globale (zones UI au-dessus du canvas incluses)
+    // sécurité : quand l’onglet perd le focus, on relâche tout
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        setState((s) => ({
+          up: false, down: false, left: false, right: false, jump: false, running: false,
+        }));
+      }
+    };
+
     window.addEventListener("keydown", onKeyDown, { passive: false });
     window.addEventListener("keyup", onKeyUp, { passive: true });
+    document.addEventListener("visibilitychange", onVisibility, { passive: true });
 
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 

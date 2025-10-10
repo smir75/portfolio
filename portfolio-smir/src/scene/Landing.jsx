@@ -187,14 +187,16 @@ export default function Landing({ onEnter }) {
     if (launching) return;
     setLaunching(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-   // ✅ Sécurité (si jamais onExitTop ne déclenche pas) — mais protégée
+   
+    
+    
     timeoutRef.current = setTimeout(() => {
       if (!isUnmountedRef.current && !didEnterRef.current) {
         didEnterRef.current = true;
         setIsVisible(false);
         onEnter?.();
       }
-    }, 1200);
+    }, 1200); 
   }, [launching, onEnter]);
 
   // Entrée clavier
@@ -336,7 +338,7 @@ export default function Landing({ onEnter }) {
           >
             Créé par <strong> M. Sagar </strong> — Éxpédition sur une lune sculptée à la main, entre stations, satellites et HUD immersif.
             <br />
-            Appuie sur {" "}
+            Appuie sur{" "}
             <kbd
               style={{
                 padding: "2px 6px",
@@ -348,7 +350,7 @@ export default function Landing({ onEnter }) {
             >
               Entrée
             </kbd>{" "}
-            ou clique sur Enter.
+            ou clique sur le bouton.
           </p>
 
           <div style={{ marginTop: 12 }}>

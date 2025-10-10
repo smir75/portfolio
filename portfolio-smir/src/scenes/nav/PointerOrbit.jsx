@@ -6,23 +6,23 @@ import { useThree, useFrame } from "@react-three/fiber";
 /**
  * Drag (LMB) to rotate qWorldRef:
  * - Drag RIGHT  => yaw right
- * - Drag DOWN   => pitch down  (vertical corrigé)
- * Axes basés caméra (diagonales OK). Dead-zone pour préserver click/dblclick.
+ * - Drag DOWN   => pitch down
+ * Axes caméra (diagonales OK). Dead-zone pour préserver click/dblclick.
  * Inertie optionnelle après relâche.
  */
 export default function PointerOrbit({
   qWorldRef,
   sensitivity = 0.003,
-  deadZone = 3,          // px avant d'engager la rotation
+  deadZone = 3,
   enabled = true,
-  inertia = true,        // garde une rotation après le mouseup
-  damping = 4.0,         // plus grand = s’arrête plus vite
-  invertYaw = false,     // change si tu préfères l’autre sens horizontal
-  invertPitch = true,    // ✅ par défaut ON pour corriger ton ressenti vertical
+  inertia = true,
+  damping = 4.0,
+  invertYaw = false,
+  invertPitch = true,
 }) {
   const { gl, camera } = useThree();
 
-  // état interne non réactif
+  // état + temporaires réutilisés
   const s = useMemo(
     () => ({
       dragging: false,
@@ -32,8 +32,14 @@ export default function PointerOrbit({
       lastX: 0,
       lastY: 0,
       lastT: 0,
-      vyaw: 0,    // vitesses angulaires (rad/s)
+      vyaw: 0,    // rad/s
       vpitch: 0,
+
+      // TMP objects (évite new/alloc)
+      vUp: new THREE.Vector3(),
+      vRight: new THREE.Vector3(),
+      qYaw: new THREE.Quaternion(),
+      qPitch: new THREE.Quaternion(),
     }),
     []
   );
@@ -72,25 +78,21 @@ export default function PointerOrbit({
       if (!s.moved) {
         const totalDx = e.clientX - s.startX;
         const totalDy = e.clientY - s.startY;
-        if (Math.hypot(totalDx, totalDy) < deadZone) return;
+        if ((totalDx * totalDx + totalDy * totalDy) < (deadZone * deadZone)) return;
         s.moved = true;
       }
 
-      // axes caméra (diagonales OK)
-      const up    = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).normalize();
-      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).normalize();
+      // axes caméra sans alloc
+      s.vUp.set(0, 1, 0).applyQuaternion(camera.quaternion).normalize();
+      s.vRight.set(1, 0, 0).applyQuaternion(camera.quaternion).normalize();
 
-      // sens intuitif:
-      // - horizontal: drag RIGHT => yaw + (ou inverse si invertYaw)
-      // - vertical:   drag DOWN  => pitch + (=> planète “descend” visuellement)
       const yawDelta   =  (invertYaw   ? -dx :  dx) * sensitivity;
       const pitchDelta =  (invertPitch ?  dy : -dy) * sensitivity;
 
-      const qYaw   = new THREE.Quaternion().setFromAxisAngle(up,    yawDelta);
-      const qPitch = new THREE.Quaternion().setFromAxisAngle(right, pitchDelta);
-      qWorldRef.current.premultiply(qYaw).premultiply(qPitch).normalize();
+      s.qYaw.setFromAxisAngle(s.vUp,    yawDelta);
+      s.qPitch.setFromAxisAngle(s.vRight, pitchDelta);
+      qWorldRef.current.premultiply(s.qYaw).premultiply(s.qPitch).normalize();
 
-      // vitesses angulaires pour l'inertie (rad/s)
       const dt = dtMs / 1000;
       if (dt > 0) {
         s.vyaw   = yawDelta   / dt;
@@ -120,7 +122,7 @@ export default function PointerOrbit({
     };
   }, [gl, camera, qWorldRef, sensitivity, deadZone, enabled, invertYaw, invertPitch, s]);
 
-  // inertie après relâche
+  // inertie après relâche — sans alloc
   useFrame((_, dt) => {
     if (!inertia || s.dragging || !qWorldRef?.current) return;
 
@@ -133,12 +135,12 @@ export default function PointerOrbit({
       return;
     }
 
-    const up    = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).normalize();
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).normalize();
+    s.vUp.set(0, 1, 0).applyQuaternion(camera.quaternion).normalize();
+    s.vRight.set(1, 0, 0).applyQuaternion(camera.quaternion).normalize();
 
-    const qYaw   = new THREE.Quaternion().setFromAxisAngle(up,    s.vyaw   * dt);
-    const qPitch = new THREE.Quaternion().setFromAxisAngle(right, s.vpitch * dt);
-    qWorldRef.current.premultiply(qYaw).premultiply(qPitch).normalize();
+    s.qYaw.setFromAxisAngle(s.vUp,    s.vyaw   * dt);
+    s.qPitch.setFromAxisAngle(s.vRight, s.vpitch * dt);
+    qWorldRef.current.premultiply(s.qYaw).premultiply(s.qPitch).normalize();
   });
 
   return null;

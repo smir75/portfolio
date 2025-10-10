@@ -4,6 +4,7 @@ import { Billboard, useCursor } from "@react-three/drei";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import HUDText from "./HUDText";
+import { dbg } from "@/utils/debug";
 
 export default function HUDPanel({
   type,
@@ -15,8 +16,7 @@ export default function HUDPanel({
   onClick,                // compat
   stationId,              // needed for dblclick
   highContrast,
-}) 
-{
+}) {
   const onFocus = onFocusProp ?? onClick;
 
   const plane = useRef();
@@ -42,25 +42,31 @@ export default function HUDPanel({
     e.nativeEvent?.stopImmediatePropagation?.();
   };
 
-  const handleFocus = (e) => { stop(e); onFocus?.(stationId); };
-  const handleOpen  = (e) => {
+  const handleFocus = (e) => {
     stop(e);
-    if (!stationId) return;
-    window.dispatchEvent(new CustomEvent("saga-open-station", { detail: { id: stationId } }));
+    dbg("HUDPanel onClick (focus)", { stationId });
+    onFocus?.(stationId);
   };
 
+  const handleOpen = (e) => {
+    stop(e);
+    dbg("HUDPanel onDoubleClick → dispatch saga-open-station", { stationId });
+    if (!stationId) return;
+    // Ouvre APRÈS alignement (useStationEvents => queueOpen)
+    window.dispatchEvent(new CustomEvent("saga-open-station", { detail: { id: stationId, timeout: 8000 } }));
+  };
+
+  // IMPORTANT :
+  // - onClick = focus (1 clic)
+  // - onDoubleClick = open (fiable ; on ne dépend plus de e.detail)
   const commonProps = {
-   onPointerOver: () => setHot(true),
-   onPointerOut:  () => setHot(false),
-   
-   onPointerDown: (e) => { 
-    e.stopPropagation(); 
-    e.nativeEvent?.stopImmediatePropagation?.(); 
-  },
-   
-   onClick: (e) => (e?.detail >= 2 ? handleOpen(e) : handleFocus(e)),
-   onDoubleClick: handleOpen, 
- };
+    onPointerOver: () => setHot(true),
+    onPointerOut:  () => setHot(false),
+    onPointerDown: stop,
+    onClick: handleFocus,
+    onDoubleClick: handleOpen,
+  };
+
   useCursor(hot);
 
   if (type === "round") {
