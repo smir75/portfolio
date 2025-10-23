@@ -1,9 +1,47 @@
 // src/scene/Landing.jsx
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Sparkles } from "@react-three/drei";
 import * as THREE from "three";
 
+/* ============================================
+   GLContextGuards
+   - Applique les params GL (tone mapping, color space)
+   - Gère proprement webglcontextlost/restored avec cleanup
+   ============================================ */
+function GLContextGuards() {
+  const { gl } = useThree();
+
+  useEffect(() => {
+    // GL params
+    gl.setClearColor(new THREE.Color(0, 0, 0), 0);
+    gl.outputColorSpace = THREE.SRGBColorSpace;
+    gl.toneMapping = THREE.ACESFilmicToneMapping;
+    gl.toneMappingExposure = 1.0;
+
+    const canvas = gl.domElement;
+
+    const onLostCapture = (e) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
+    const onRestored = () => {
+      try {
+        gl.resetState();
+      } catch {}
+    };
+
+    canvas.addEventListener("webglcontextlost", onLostCapture, { capture: true, passive: false });
+    canvas.addEventListener("webglcontextrestored", onRestored, { passive: true });
+
+    return () => {
+      canvas.removeEventListener("webglcontextlost", onLostCapture, { capture: true });
+      canvas.removeEventListener("webglcontextrestored", onRestored);
+    };
+  }, [gl]);
+
+  return null;
+}
 
 function Rocket({ launch }) {
   const group = useRef();
@@ -20,6 +58,7 @@ function Rocket({ launch }) {
     if (launch) {
       vel.current = Math.min(vel.current + 8.0 * dt, 6.5);
       y.current += vel.current * dt;
+      // "roll" ici est techniquement un yaw visuel (rotation Y)
       roll.current = roll.current * 0.9 + Math.sin(t * 6) * 0.002;
     } else {
       const floatOffset = Math.sin(t * 1.1) * 0.06;
@@ -93,7 +132,8 @@ function Rocket({ launch }) {
         />
       ))}
       <mesh position={[0, -0.55, 0]} geometry={geometries.engine} material={materials.engine} />
-      <mesh position={[0, -0.72, 0]} geometry={geometries.flame} material={materials.flame} />
+      {/* frustumCulled false pour garantir la visibilité de l'effet */}
+      <mesh frustumCulled={false} position={[0, -0.72, 0]} geometry={geometries.flame} material={materials.flame} />
       <group position={[0, -0.85, 0]}>
         <Sparkles count={launch ? 44 : 16} scale={0.9} size={1.6} speed={1.2} color="#bfe3ff" />
       </group>
@@ -155,7 +195,8 @@ function RocketHUD({ launch, zDist = 3.0, bottomPx = 88, scale = 1.0, onExitTop 
   });
 
   return (
-    <group ref={ref}>
+    // HUD jamais cullé
+    <group ref={ref} frustumCulled={false}>
       <Rocket launch={launch} />
     </group>
   );
@@ -188,16 +229,14 @@ export default function Landing({ onEnter }) {
     if (launching) return;
     setLaunching(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-   
-    
-    
+
     timeoutRef.current = setTimeout(() => {
       if (!isUnmountedRef.current && !didEnterRef.current) {
         didEnterRef.current = true;
         setIsVisible(false);
         onEnter?.();
       }
-    }, 1200); 
+    }, 1200);
   }, [launching, onEnter]);
 
   // Entrée clavier
@@ -223,6 +262,18 @@ export default function Landing({ onEnter }) {
       }
     };
   }, []);
+
+  // Respect "prefers-reduced-motion" : skip l'intro
+  useEffect(() => {
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (prefersReduced && isVisible && !launching && !didEnterRef.current) {
+      didEnterRef.current = true;
+      setIsVisible(false);
+      onEnter?.();
+    }
+  }, [isVisible, launching, onEnter]);
 
   // Qualité + anim fluide (qualité conservée)
   const canvasConfig = useMemo(
@@ -250,44 +301,14 @@ export default function Landing({ onEnter }) {
       className={`fixed inset-0 z-[1000] text-slate-100 overflow-hidden ${launching ? "launching" : ""}`}
       role="dialog"
       aria-modal="true"
+      aria-labelledby="landing-title"
       aria-label="Landing overlay"
       style={{ pointerEvents: "auto" }}
     >
-      
-
       {/* Canvas 3D — visible pendant l’anim */}
       <div className="landing-canvas">
-        <Canvas
-          {...canvasConfig}
-          onCreated={({ gl }) => {
-  gl.setClearColor(new THREE.Color(0, 0, 0), 0);
-  gl.outputColorSpace = THREE.SRGBColorSpace;
-  gl.toneMapping = THREE.ACESFilmicToneMapping;
-  gl.toneMappingExposure = 1.0;
-
-  const canvas = gl.domElement;
-
-
- 
-  const onLostCapture = (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    // pas de remount ici : le landing se ferme très vite de toute façon
-  };
-  const onRestored = () => {
-    try { gl.resetState(); } catch {}
-  };
-
-  canvas.addEventListener("webglcontextlost", onLostCapture, { capture: true, passive: false });
-  canvas.addEventListener("webglcontextrestored", onRestored, { passive: true });
-
-  // cleanup
-  return () => {
-    canvas.removeEventListener("webglcontextlost", onLostCapture, { capture: true });
-    canvas.removeEventListener("webglcontextrestored", onRestored);
-  };
-}}
-        >
+        <Canvas {...canvasConfig}>
+          <GLContextGuards />
           <ambientLight intensity={0.4} />
           <directionalLight position={[2, 3, 4]} intensity={0.9} castShadow={false} />
           <RocketHUD
@@ -296,7 +317,7 @@ export default function Landing({ onEnter }) {
             bottomPx={88}
             scale={1.0}
             onExitTop={() => {
-                            // ✅ Première arrivée : on enter + annule le timeout
+              // ✅ Première arrivée : on enter + annule le timeout
               if (!didEnterRef.current) {
                 didEnterRef.current = true;
                 if (timeoutRef.current) {
@@ -319,6 +340,7 @@ export default function Landing({ onEnter }) {
       <div className="landing-center-wrap" role="document">
         <div className="landing-center">
           <h1
+            id="landing-title"
             style={{
               fontFamily: "OrbitronLocal, Orbitron, system-ui, sans-serif",
               fontSize: "clamp(2rem, 5vw, 3.6rem)",
@@ -330,14 +352,16 @@ export default function Landing({ onEnter }) {
             Welcome to <span style={{ color: "#60a5fa" }}>Sagar.io</span>
           </h1>
 
-          <p style={{
+          <p
+            style={{
               maxWidth: 820,
               color: "rgba(226,236,255,0.88)",
               marginTop: 6,
               lineHeight: 1.5,
             }}
           >
-            Créé par <strong> M. Sagar </strong> — Éxpédition sur une lune sculptée à la main, entre stations, satellites et HUD immersif.
+            Créé par <strong> M. Sagar </strong> — Éxpédition sur une lune sculptée à la main, entre
+            stations, satellites et HUD immersif.
             <br />
             Appuie sur{" "}
             <kbd

@@ -1,395 +1,325 @@
-// src/pages/BTS.jsx
-import React, { useMemo, useState, useMemo as _useMemo } from "react";
-import PageClose from "@/scenes/ui/PageClose.jsx";
+import React, { useMemo, useState } from "react";
+import { Zap, Cpu, Shield, BookOpen, Rocket, Grid3X3, FileText } from "lucide-react";
 
-/* =========================
-   Données démo (inchangé)
-   ========================= */
 const demo = {
   projets: [
     { id:"p1", titre:"Portail RH", epreuves:["E4","E5"], competences:["C1.1","C2.2","C3.1"], techno:["Laravel","MySQL","Docker"], niveau:.82 },
-    { id:"p2", titre:"API Logistique", epreuves:["E4"],     competences:["C2.1","C3.2"],       techno:["Node","MongoDB"],       niveau:.68 },
-    { id:"p3", titre:"Portfolio Spatial", epreuves:["E5"],  competences:["C1.2","C2.2","C4.1"], techno:["React","R3F","Three"],  niveau:.91 },
+    { id:"p2", titre:"API Logistique", epreuves:["E4"], competences:["C2.1","C3.2"], techno:["Node","MongoDB"], niveau:.68 },
+    { id:"p3", titre:"Portfolio Spatial", epreuves:["E5"], competences:["C1.2","C2.2","C4.1"], techno:["React","R3F","Three"], niveau:.91 },
   ],
   competences: [
     { id:"C1.1", label:"Analyser un besoin" }, { id:"C1.2", label:"Concevoir archi" },
-    { id:"C2.1", label:"Dév back/API" },      { id:"C2.2", label:"Dév front/IHM" },
+    { id:"C2.1", label:"Dév back/API" }, { id:"C2.2", label:"Dév front/IHM" },
     { id:"C3.1", label:"Déployer/Conteneuriser" }, { id:"C3.2", label:"CI/CD & tests" },
     { id:"C4.1", label:"Support & doc" },
   ],
 };
 
-/* =========================
-   Mini UI lib (holo)
-   ========================= */
-const HoloCard = ({ children, className = "" }) => (
-  <div
-    className={
-      "relative rounded-2xl border overflow-hidden " +
-      "border-cyan-400/20 bg-gradient-to-b from-slate-900/60 to-slate-950/70 " +
-      "backdrop-blur-md shadow-[0_10px_40px_rgba(0,0,0,.35)] " +
-      "before:absolute before:inset-0 before:pointer-events-none " +
-      "before:bg-[radial-gradient(1200px_400px_at_20%_-10%,rgba(56,189,248,.12),transparent_60%)] " +
-      className
-    }
-  >
-    {/* bordure animée subtile */}
-    <div className="absolute inset-0 pointer-events-none rounded-2xl ring-1 ring-inset ring-cyan-300/10" />
-    {children}
-  </div>
-);
-
-const HoloDivider = ({ className = "" }) => (
-  <div className={"relative h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent " + className}>
-    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-300/20 to-transparent animate-pulse [animation-duration:2.6s]" />
-  </div>
-);
-
-const Button = ({ className = "", glow = false, ...p }) => (
-  <button
-    className={
-      "px-3 py-1.5 rounded-xl border transition " +
-      (glow
-        ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-100 hover:bg-cyan-400/20 shadow-[0_0_20px_rgba(56,189,248,.18)]"
-        : "border-slate-700/60 bg-slate-900/60 text-slate-100 hover:bg-slate-800/70") +
-      " " + className
-    }
-    {...p}
-  />
-);
-
-/* =========================
-   Badges techno avec icônes SVG inline
-   ========================= */
 const icons = {
-  Node: (
-    <svg viewBox="0 0 128 128" className="w-3.5 h-3.5">
-      <path fill="#83CD29" d="M64 .6L5.8 34.1v59.2L64 126.6l58.2-33.3V34.1z"/>
-      <path fill="#111827" d="M64 15.2l44.8 25.7v46.2L64 112.8 19.2 87V41z"/>
-      <path fill="#83CD29" d="M83.8 52.4c0-10.8-6.3-17.1-18.3-17.1H45.7v54.9h11.4V73.2h6.9l10 17h12.9L75 71.5c5.9-2.5 8.8-8.1 8.8-19.1zm-18.4 9.2h-8.4V46.5h8.6c5.8 0 9 2.3 9 7.6 0 5.7-3.2 7.5-9.2 7.5z"/>
-    </svg>
-  ),
-  MongoDB: (
-    <svg viewBox="0 0 128 128" className="w-3.5 h-3.5">
-      <path fill="#10B981" d="M64 8s-3.3 60.2-30 77.6C50.7 92.3 57.9 112 64 120c6.1-8 13.3-27.7 30-34.4C67.3 68.2 64 8 64 8z"/>
-      <path fill="#064E3B" d="M64 120c-4.3-5.8-8.6-14.7-12-24 4.6-3.5 8.2-8.5 12-16 3.8 7.5 7.4 12.5 12 16-3.4 9.3-7.7 18.2-12 24z"/>
-    </svg>
-  ),
-  Laravel: (
-    <svg viewBox="0 0 128 128" className="w-3.5 h-3.5">
-      <path fill="#FF2D20" d="M92 12l24 14v28L68 86 44 72V44l24-14L92 12zM20 32l24 14v28L20 60V32z"/>
-    </svg>
-  ),
-  MySQL: (
-    <svg viewBox="0 0 128 128" className="w-3.5 h-3.5">
-      <path fill="#2563EB" d="M20 96c16-28 44-48 72-52 8 0 12 4 16 10-18 2-36 12-48 26 12 2 22 4 32 10-16 12-36 18-56 16-8-2-14-6-16-10z"/>
-      <circle cx="100" cy="48" r="6" fill="#1E3A8A" />
-    </svg>
-  ),
-  Docker: (
-    <svg viewBox="0 0 128 128" className="w-3.5 h-3.5">
-      <rect x="8" y="60" width="112" height="28" rx="6" fill="#38BDF8"/>
-      <rect x="28" y="44" width="16" height="12" fill="#0EA5E9"/>
-      <rect x="46" y="44" width="16" height="12" fill="#0EA5E9"/>
-      <rect x="64" y="44" width="16" height="12" fill="#0EA5E9"/>
-    </svg>
-  ),
-  React: (
-    <svg viewBox="0 0 128 128" className="w-3.5 h-3.5">
-      <circle cx="64" cy="64" r="10" fill="#67E8F9"/>
-      <g fill="none" stroke="#22D3EE" strokeWidth="6">
-        <ellipse cx="64" cy="64" rx="50" ry="20"/>
-        <ellipse cx="64" cy="64" rx="50" ry="20" transform="rotate(60 64 64)"/>
-        <ellipse cx="64" cy="64" rx="50" ry="20" transform="rotate(120 64 64)"/>
-      </g>
-    </svg>
-  ),
-  R3F: (
-    <svg viewBox="0 0 128 128" className="w-3.5 h-3.5">
-      <path d="M64 16l48 28v40L64 112 16 84V44z" fill="#7DD3FC"/>
-      <path d="M64 32l32 18v28L64 96 32 78V50z" fill="#0EA5E9"/>
-    </svg>
-  ),
-  Three: (
-    <svg viewBox="0 0 128 128" className="w-3.5 h-3.5">
-      <path fill="#60A5FA" d="M20 96l44-76 44 76H20z"/>
-      <path fill="#1D4ED8" d="M64 88l26-44 26 44H64z"/>
-    </svg>
-  ),
+  Node: <Cpu className="w-3.5 h-3.5" />,
+  MongoDB: <Zap className="w-3.5 h-3.5" />,
+  Laravel: <Rocket className="w-3.5 h-3.5" />,
+  MySQL: <Grid3X3 className="w-3.5 h-3.5" />,
+  Docker: <Shield className="w-3.5 h-3.5" />,
+  React: <Zap className="w-3.5 h-3.5" />,
+  R3F: <Rocket className="w-3.5 h-3.5" />,
+  Three: <Rocket className="w-3.5 h-3.5" />,
 };
 
+
+
+const GradientBorder = ({ children, color = "from-cyan-500" }) => (
+  <div className={`relative rounded-2xl overflow-hidden bg-gradient-to-br ${color} to-blue-500 p-0.5`}>
+    <div className="relative p-6 bg-slate-950 rounded-2xl">{children}</div>
+  </div>
+);
+
+const ModuleHeader = ({ icon: Icon, title, color }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <div className={`p-3 rounded-xl ${color}`}>
+      <Icon className="w-5 h-5 text-white" />
+    </div>
+    <h2 className="text-2xl font-bold text-transparent bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text">
+      {title}
+    </h2>
+  </div>
+);
+
 const TechPill = ({ name }) => (
-  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-xs border-cyan-400/30 bg-cyan-400/10 text-cyan-100">
-    <span className="shrink-0">{icons[name] ?? <span className="w-3.5 h-3.5 rounded bg-cyan-300/40" />}</span>
+  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-violet-400/50 bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-violet-200 text-xs font-medium hover:border-violet-300 transition">
+    {icons[name] || <span className="w-3.5 h-3.5 rounded bg-violet-300/40" />}
     {name}
   </span>
 );
 
-/* =========================
-   Gauges (HUD)
-   ========================= */
-const Gauge = ({ value = 0.7 }) => {
+const SkillBadge = ({ id, label }) => (
+  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-cyan-400/50 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 text-cyan-200 text-xs font-medium">
+    <span className="font-bold text-cyan-300">{id}</span>
+    {label}
+  </span>
+);
+
+const Gauge = ({ value = 0.7, color = "from-cyan-400 to-blue-400" }) => {
   const pct = Math.round(value * 100);
   return (
-    <div className="w-full h-2 overflow-hidden border rounded-full border-cyan-400/30 bg-slate-900/60">
-      <div
-        className="relative h-full bg-gradient-to-r from-cyan-400/80 to-sky-400/80"
-        style={{ width: `${pct}%`, boxShadow: "0 0 20px rgba(56,189,248,.45)" }}
-      >
-        <div className="absolute inset-0 opacity-60 bg-[linear-gradient(90deg,transparent_0,rgba(255,255,255,.35)_50%,transparent_100%)] animate-[scan_1.8s_linear_infinite]" />
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs">
+        <span className="text-slate-400">Progression</span>
+        <span className="font-bold text-cyan-300">{pct}%</span>
       </div>
-      {/* scan anim */}
-      <style>{`@keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}`}</style>
+      <div className="w-full h-3 overflow-hidden border rounded-full bg-slate-800/50 border-slate-700">
+        <div
+          className={`h-full bg-gradient-to-r ${color} rounded-full transition-all duration-500 shadow-lg`}
+          style={{ width: `${pct}%`, boxShadow: `0 0 15px rgba(34,211,238,.6)` }}
+        />
+      </div>
     </div>
   );
 };
 
-/* =========================
-   Page BTS
-   ========================= */
 export default function BTS() {
   const [epreuve, setEpreuve] = useState("E4");
-  const [query, setQuery]     = useState("");
-  const [view, setView]       = useState("projets"); // projets | matrice | refs
-  const [pdfUrl, setPdfUrl]   = useState("");
-
-  const referentiels = [
-    {
-      label: "Référentiel BTS SIO (MEN – ENQDiP, PDF)",
-      url: "https://enqdip.sup.adc.education.fr/bts/referentiel/BTS_ServicesInformatiquesOrganisations.pdf",
-      source: "MEN / ENQDiP",
-    },
-    {
-      label: "Référentiel de compétences – Annexe I.B (PDF)",
-      url: "https://www.btsinfo.nc/wp-content/uploads/2022/09/BTS_ServicesInformatiquesOrganisations2019_Referentiel_competences.pdf",
-      source: "Annexe I.B",
-    },
-    {
-      label: "Page CERTA (rénovation 2019, 1ère session 2022)",
-      url: "https://www.reseaucerta.org/sio2019/accueil",
-      source: "Réseau CERTA",
-    },
-    {
-      label: "Arrêté du 8 juillet 2024 (modifications)",
-      url: "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000049926463",
-      source: "Légifrance",
-    },
-  ];
+  const [query, setQuery] = useState("");
+  const [view, setView] = useState("projets");
 
   const projetsFiltres = useMemo(() => {
     const q = query.trim().toLowerCase();
     return demo.projets
       .filter((p) => p.epreuves.includes(epreuve))
-      .filter((p) =>
-        q ? [p.titre, ...p.techno, ...p.competences].join(" ").toLowerCase().includes(q) : true
-      );
+      .filter((p) => q ? [p.titre, ...p.techno, ...p.competences].join(" ").toLowerCase().includes(q) : true);
   }, [epreuve, query]);
 
   const couverture = useMemo(() => {
-    const set = new Set(
-      demo.projets.filter(p => p.epreuves.includes(epreuve)).flatMap(p => p.competences)
-    );
+    const set = new Set(demo.projets.filter(p => p.epreuves.includes(epreuve)).flatMap(p => p.competences));
     return Math.min(1, set.size / demo.competences.length);
   }, [epreuve]);
 
   return (
-    <div className="page-glass">
-      {/* ===== Header ===== */}
-      <header className="p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="relative">
-            <h2 className="text-2xl tracking-widest font-orbitron holo-title">
-              BTS SIO — Session 2026
-            </h2>
-            <p className="text-sm text-slate-400">
-              E4/E5 ↔ Projets ↔ Compétences • Interface holo
-            </p>
-            {/* micro neon */}
-            <span className="absolute -left-2 -top-2 w-2 h-2 rounded-full bg-cyan-300 shadow-[0_0_20px_rgba(56,189,248,.9)]" />
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+      {/* Fond étoilé */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(2px_2px_at_20%_30%,#fff_0%,rgba(255,255,255,0.1)_50%),radial-gradient(2px_2px_at_60%_70%,#aef_0%,rgba(174,225,255,0.1)_50%),radial-gradient(1px_1px_at_50%_50%,#fff_0%,rgba(255,255,255,0.08)_50%)]" style={{ backgroundSize: "200% 200%, 300% 300%, 250% 250%" }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-900/5 to-transparent" />
+      </div>
+
+      <div className="relative z-10 p-6 mx-auto max-w-7xl">
+        {/* Header spectaculaire */}
+        <div className="mb-8 text-center">
+          <div className="inline-block px-6 py-2 mb-4 text-sm font-bold tracking-widest border rounded-full border-cyan-500/50 bg-cyan-500/10 text-cyan-300">
+            ⊕ SESSION 2026
           </div>
-          <div className="flex items-center gap-2">
-            {["E4","E5"].map(e => (
-              <Button key={e} onClick={()=>setEpreuve(e)} glow={e===epreuve}>
+          <h1 className="mb-2 text-5xl font-black text-transparent md:text-6xl bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text">
+            BTS SIO
+          </h1>
+          <p className="text-lg text-slate-400">Services Informatiques aux Organisations</p>
+          <div className="flex flex-wrap justify-center gap-2 mt-4">
+            {["E4", "E5"].map(e => (
+              <button
+                key={e}
+                onClick={() => setEpreuve(e)}
+                className={`px-6 py-2 rounded-lg font-bold transition-all duration-300 ${
+                  e === epreuve
+                    ? `bg-gradient-to-r ${e === "E4" ? "from-cyan-500 to-blue-500" : "from-purple-500 to-pink-500"} text-white shadow-lg scale-105`
+                    : "border border-slate-700 text-slate-300 hover:border-slate-500"
+                }`}
+              >
                 {e}
-              </Button>
+              </button>
             ))}
-            <Button onClick={()=>window.print()} title="Imprimer/Exporter PDF">⤓ Export</Button>
-            <PageClose />
           </div>
         </div>
 
-        <HoloDivider className="my-3" />
-
-        {/* recherche + stats */}
-        <div className="grid gap-3 mt-2 sm:grid-cols-3">
-          <div className="space-y-1 sm:col-span-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400">Couverture compétences</span>
-              <span className="text-xs text-cyan-200">{Math.round(couverture*100)}%</span>
-            </div>
-            <Gauge value={couverture}/>
-          </div>
-          <input
-            value={query}
-            onChange={(e)=>setQuery(e.target.value)}
-            placeholder="Rechercher projet / techno / compétence…"
-            className="w-full px-3 py-2 text-sm border rounded-xl bg-slate-900/70 border-cyan-400/20 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400/40"
-          />
-        </div>
-
-        {/* switch de vues */}
-        <div className="flex items-center gap-2 mt-3">
+        {/* Navigation modulaire */}
+        <div className="grid grid-cols-2 gap-3 mb-8 md:grid-cols-5">
           {[
-            {k:"projets", label:"Projets"},
-            {k:"matrice", label:"Matrice"},
-            {k:"refs",    label:"Référentiels officiels"},
-          ].map(v=>(
-            <Button key={v.k} onClick={()=>setView(v.k)} glow={view===v.k}>
-              {v.label}
-            </Button>
-          ))}
+            { k: "projets", label: "Projets", icon: Rocket, color: "from-cyan-500 to-blue-500" },
+            { k: "matrice", label: "Matrice", icon: Grid3X3, color: "from-purple-500 to-pink-500" },
+            { k: "exams", label: "Épreuves", icon: FileText, color: "from-orange-500 to-red-500" },
+            { k: "blocs", label: "Blocs", icon: Shield, color: "from-green-500 to-emerald-500" },
+            { k: "refs", label: "Références", icon: BookOpen, color: "from-indigo-500 to-blue-500" },
+          ].map(v => {
+            const Icon = v.icon;
+            return (
+              <button
+                key={v.k}
+                onClick={() => setView(v.k)}
+                className={`relative group p-3 rounded-xl transition-all duration-300 ${
+                  view === v.k
+                    ? `bg-gradient-to-r ${v.color} text-white shadow-lg scale-105`
+                    : "bg-slate-900/50 border border-slate-800 text-slate-400 hover:border-slate-700"
+                }`}
+              >
+                <Icon className="w-5 h-5 mx-auto mb-1" />
+                <span className="text-xs font-bold">{v.label}</span>
+              </button>
+            );
+          })}
         </div>
-      </header>
 
-      {/* ===== Vue Projets ===== */}
-      {view==="projets" && (
-        <section className="grid gap-4 p-4 pt-0 md:grid-cols-2">
-          {projetsFiltres.map(p=>(
-            <HoloCard key={p.id}>
-              <div className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="tracking-wide font-orbitron">{p.titre}</h3>
-                    <p className="text-xs text-slate-400">{p.epreuves.join(" • ")}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {p.techno.map(t => <TechPill key={t} name={t} />)}
-                  </div>
-                </div>
+        {/* Stats globales */}
+        <GradientBorder color="from-cyan-500">
+          <div className="grid gap-6 md:grid-cols-3">
+            <div>
+              <p className="mb-2 text-sm text-slate-400">Couverture compétences</p>
+              <Gauge value={couverture} color="from-cyan-400 to-blue-400" />
+            </div>
+            <div>
+              <p className="mb-2 text-sm text-slate-400">Projets filtrés</p>
+              <div className="text-3xl font-black text-cyan-300">{projetsFiltres.length}/{demo.projets.length}</div>
+            </div>
+            <div>
+              <p className="mb-2 text-sm text-slate-400">Recherche</p>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Projet, techno, compétence…"
+                className="w-full px-4 py-2 border rounded-lg bg-slate-900 border-cyan-500/30 text-cyan-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
+          </div>
+        </GradientBorder>
 
-                <div className="mt-3 space-y-2">
-                  <div className="flex flex-wrap gap-1 text-xs">
-                    {p.competences.map(c=>(
-                      <span key={c} className="px-2 py-0.5 rounded-md border border-cyan-400/30 text-cyan-200/90 bg-cyan-400/10">
-                        {c}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-400">Niveau</span>
-                      <span className="text-xs text-slate-300">{Math.round(p.niveau*100)}%</span>
+        {/* Vue Projets */}
+        {view === "projets" && (
+          <div className="mt-8 space-y-6">
+            <ModuleHeader icon={Rocket} title="Projets Pédagogiques" color="bg-gradient-to-br from-cyan-500 to-blue-500" />
+            <div className="grid gap-6 md:grid-cols-2">
+              {projetsFiltres.map(p => (
+                <GradientBorder key={p.id} color="from-blue-500">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-cyan-100">{p.titre}</h3>
+                      <p className="text-sm text-slate-400">{p.epreuves.join(" • ")}</p>
                     </div>
-                    <Gauge value={p.niveau}/>
+                    <div className="flex flex-wrap gap-2">
+                      {p.techno.map(t => <TechPill key={t} name={t} />)}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {p.competences.map(c => <SkillBadge key={c} id={c} label={demo.competences.find(x => x.id === c)?.label} />)}
+                    </div>
+                    <Gauge value={p.niveau} color="from-blue-400 to-cyan-400" />
                   </div>
-                </div>
-              </div>
-            </HoloCard>
-          ))}
-          {projetsFiltres.length===0 && (
-            <div className="p-6 text-sm text-slate-400 opacity-80">Aucun projet pour ce filtre.</div>
-          )}
-        </section>
-      )}
+                </GradientBorder>
+              ))}
+            </div>
+          </div>
+        )}
 
-      {/* ===== Vue Matrice ===== */}
-      {view==="matrice" && (
-        <section className="p-4 pt-0">
-          <HoloCard>
-            <div className="overflow-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-slate-900/60 text-slate-300 font-orbitron">
-                  <tr>
-                    <th className="p-3 text-left border-b border-cyan-400/20">Compétence</th>
-                    {demo.projets.filter(p=>p.epreuves.includes(epreuve)).map(p=>(
-                      <th key={p.id} className="p-3 text-left border-b border-cyan-400/20">{p.titre}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {demo.competences.map(c=>{
-                    const projs = demo.projets.filter(p=>p.epreuves.includes(epreuve));
-                    return (
-                      <tr key={c.id} className="odd:bg-slate-900/20">
-                        <td className="p-3 border-b border-slate-800/50 whitespace-nowrap">
-                          <span className="font-medium">{c.id}</span>{" "}
-                          <span className="text-slate-400">{c.label}</span>
-                        </td>
-                        {projs.map(p=>{
-                          const yes = p.competences.includes(c.id);
-                          return (
-                            <td key={p.id+c.id} className="p-3 border-b border-slate-800/50">
-                              {yes ? (
-                                <span className="px-2 py-0.5 rounded-md bg-cyan-400/15 border border-cyan-400/30 text-cyan-200/90 text-xs">
-                                  Couvert
-                                </span>
+        {/* Vue Matrice */}
+        {view === "matrice" && (
+          <div className="mt-8">
+            <ModuleHeader icon={Grid3X3} title="Matrice de Couverture" color="bg-gradient-to-br from-purple-500 to-pink-500" />
+            <GradientBorder color="from-purple-500">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-700">
+                      <th className="px-4 py-3 font-bold text-left text-purple-300">Compétence</th>
+                      {demo.projets.filter(p => p.epreuves.includes(epreuve)).map(p => (
+                        <th key={p.id} className="px-4 py-3 font-bold text-left text-purple-300">{p.titre}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {demo.competences.map((c, i) => {
+                      const projs = demo.projets.filter(p => p.epreuves.includes(epreuve));
+                      return (
+                        <tr key={c.id} className={i % 2 === 0 ? "bg-purple-500/5" : ""}>
+                          <td className="px-4 py-3 border-b border-slate-800">
+                            <span className="font-bold text-purple-300">{c.id}</span>
+                            <span className="text-xs text-slate-400"> {c.label}</span>
+                          </td>
+                          {projs.map(p => (
+                            <td key={p.id + c.id} className="px-4 py-3 border-b border-slate-800">
+                              {p.competences.includes(c.id) ? (
+                                <span className="inline-block px-2 py-1 text-xs font-bold text-purple-200 rounded-md bg-purple-500/30">✓</span>
                               ) : (
-                                <span className="text-xs text-slate-600">—</span>
+                                <span className="text-slate-600">—</span>
                               )}
                             </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </HoloCard>
-        </section>
-      )}
-
-      {/* ===== Vue Référentiels ===== */}
-      {view==="refs" && (
-        <section className="p-4 pt-0 space-y-3">
-          <HoloCard>
-            <div className="p-4">
-              <div className="flex flex-wrap gap-2">
-                {referentiels.map((r)=>(
-                  <Button
-                    key={r.url}
-                    className="holo-chip"
-                    glow
-                    onClick={()=>setPdfUrl(r.url)}
-                    title={`Ouvrir : ${r.source}`}
-                  >
-                    {r.label}
-                  </Button>
-                ))}
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
+            </GradientBorder>
+          </div>
+        )}
 
-              {pdfUrl ? (
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Button onClick={()=>window.open(pdfUrl, "_blank")}>Ouvrir dans un onglet</Button>
-                    <a
-                      href={pdfUrl}
-                      download
-                      className="px-3 py-1.5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-100"
-                    >
-                      ⤓ Télécharger le PDF
-                    </a>
+        {/* Vue Épreuves */}
+        {view === "exams" && (
+          <div className="mt-8 space-y-6">
+            <ModuleHeader icon={FileText} title="Calendrier Épreuves 2026" color="bg-gradient-to-br from-orange-500 to-red-500" />
+            <div className="grid gap-6 md:grid-cols-2">
+              {[
+                { title: "Culture économique", date: "18 mai", time: "14:00 - 18:00", badge: "4h" },
+                { title: "Mathématiques", date: "18 mai", time: "16:00 - 18:00", badge: "2h" },
+                { title: "LVE A", date: "19 mai", time: "10:30 - 12:30", badge: "2h" },
+                { title: "Culture générale", date: "19 mai", time: "14:30 - 17:30", badge: "3h" },
+              ].map((exam, i) => (
+                <GradientBorder key={i} color="from-orange-500">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-bold text-orange-100">{exam.title}</h3>
+                      <span className="px-2 py-1 text-xs font-bold text-orange-300 rounded-lg bg-orange-500/20">{exam.badge}</span>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-slate-300">📅 {exam.date}</p>
+                      <p className="text-sm text-slate-400">🕐 {exam.time}</p>
+                    </div>
                   </div>
-                  <div className="overflow-hidden border rounded-xl border-cyan-400/20 bg-slate-950/50" style={{height: "70vh"}}>
-                    <object data={pdfUrl} type="application/pdf" width="100%" height="100%">
-                      <iframe title="PDF viewer fallback" src={pdfUrl} width="100%" height="100%" />
-                    </object>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-2 text-sm text-slate-400">
-                  Sélectionne un référentiel pour l’afficher ici.
-                </p>
-              )}
+                </GradientBorder>
+              ))}
             </div>
-          </HoloCard>
+          </div>
+        )}
 
-          <p className="text-xs text-slate-500">
-            Référentiel officiel (MEN/ENQDiP) et sources CERTA/Légifrance. La rénovation 2019 est la base en vigueur (1ʳᵉ session 2022) et reste valable pour la session 2026, avec mises à jour réglementaires (arrêté du 8 juillet 2024).
-          </p>
-        </section>
-      )}
+        {/* Vue Blocs */}
+        {view === "blocs" && (
+          <div className="mt-8 space-y-6">
+            <ModuleHeader icon={Shield} title="Blocs de Compétences" color="bg-gradient-to-br from-green-500 to-emerald-500" />
+            <div className="space-y-4">
+              {[
+                { title: "Support & Services", color: "from-green-500 to-emerald-500", skills: ["Patrimoine informatique", "Help desk", "Déploiement", "E-réputation"] },
+                { title: "Développement Apps", color: "from-blue-500 to-cyan-500", skills: ["Conception", "Développement", "Maintenance", "Gestion données"] },
+                { title: "Cybersécurité", color: "from-red-500 to-pink-500", skills: ["Protection données", "Sécurité équipements", "Garantir données", "Sécurité app"] },
+              ].map((bloc, i) => (
+                <GradientBorder key={i} color={bloc.color}>
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-bold text-white bg-gradient-to-r">{bloc.title}</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {bloc.skills.map((skill, j) => (
+                        <div key={j} className="px-3 py-2 text-sm border rounded-lg bg-white/5 border-white/10 text-slate-200">
+                          ✦ {skill}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </GradientBorder>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Vue Références */}
+        {view === "refs" && (
+          <div className="mt-8 space-y-6">
+            <ModuleHeader icon={BookOpen} title="Référentiels Officiels" color="bg-gradient-to-br from-indigo-500 to-blue-500" />
+            <GradientBorder color="from-indigo-500">
+              <div className="space-y-3">
+                <a href="https://www.education.gouv.fr/sites/default/files/ensecsup629_v2.pdf" target="_blank" rel="noreferrer" className="block p-4 font-semibold text-indigo-100 transition border rounded-lg bg-indigo-500/20 border-indigo-400/50 hover:border-indigo-300">
+                  📄 BO — Calendrier BTS 2026
+                </a>
+                <a href="https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000049926463" target="_blank" rel="noreferrer" className="block p-4 font-semibold text-indigo-100 transition border rounded-lg bg-indigo-500/20 border-indigo-400/50 hover:border-indigo-300">
+                  ⚖️ Légifrance — Arrêté BTS SIO
+                </a>
+              </div>
+            </GradientBorder>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

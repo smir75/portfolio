@@ -17,6 +17,7 @@ import Competences from "./pages/Competences.jsx";
 import Contact from "./pages/Contact.jsx";
 import Parcours from "./pages/Parcours.jsx";
 import Projets from "./pages/Projets.jsx";
+import ClassicPortfolio from "./pages/ClassicPortfolio.jsx"; // ⬅️ new
 
 // UI
 import CursorTrail from "./scenes/ui/CursorTrail.jsx";
@@ -36,15 +37,19 @@ const NAV_STATIONS = [
 
 function Root() {
   const [entered, setEntered] = useState(false);
+  const [navTarget, setNavTarget] = useState(null);   // ⬅️ cible actuelle (station demandée)
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const isHome = pathname === "/";
-  const uiBlocked = !isHome;
 
+  const isClassicHome = pathname === "/";
+  const isLunarHome = pathname === "/lunar";
+
+  // prefetch
   useEffect(() => {
-    import("./scene/MoonScene.jsx").catch(() => {});
-  }, []);
+    if (isLunarHome) import("./scene/MoonScene.jsx").catch(() => {});
+  }, [isLunarHome]);
 
+  // Callback quand une station s'ouvre (depuis MoonScene / Scene)
   const handleOpenStation = useCallback((id) => {
     const key = String(id || "").toLowerCase();
     const route = {
@@ -58,45 +63,62 @@ function Root() {
     else console.warn("[App] Unknown station id:", id);
   }, [navigate]);
 
+  // Callback quand un clic TopNav demande une rotation vers une station
+  const handleNavTarget = useCallback((id) => {
+    setNavTarget(id);
+  }, []);
+
+  // Une fois la cible consommée (rotation terminée)
+  const handleNavConsumed = useCallback(() => {
+    setNavTarget(null);
+  }, []);
+
   return (
     <SettingsProvider>
-      {/* Landing uniquement sur Home */}
-      {!entered && isHome && <Landing onEnter={() => setEntered(true)} />}
+      {/* === Landing === */}
+      {!entered && isLunarHome && <Landing onEnter={() => setEntered(true)} />}
 
-      {/* === SCÈNE 3D EN BACKDROP === */}
-      {entered && (
+      {/* === Scène 3D === */}
+      {entered && isLunarHome && (
         <div
           id="scene-layer"
-          aria-hidden={!isHome}
+          aria-hidden={!isLunarHome}
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 50,                 // sous TopNav (140) et sous #page-layer (120)
-            pointerEvents: isHome ? "auto" : "none", // interactif seulement sur Home
+            zIndex: 50,
+            pointerEvents: isLunarHome ? "auto" : "none",
           }}
         >
           <Suspense fallback={null}>
             <MoonScene
+              navTarget={navTarget}         // ⬅️ envoi de la cible à la scène
+              onNavConsumed={handleNavConsumed}
               onOpenStation={handleOpenStation}
-              reduceMotion={!isHome}
-              quality={isHome ? "high" : "low"}
-              uiBlocked={!isHome}  
+              reduceMotion={!isLunarHome}
+              quality={isLunarHome ? "high" : "low"}
+              uiBlocked={!isLunarHome}
             />
           </Suspense>
         </div>
       )}
 
-      {/* === TOPNAV AU-DESSUS DES PAGES ET DU CANVAS === */}
-      <TopNav stations={NAV_STATIONS} />
-      {entered && isHome && <CursorTrail enabled onlyOnSelector=".top-nav-glass" />}
+      {/* === TopNav visible uniquement sur /lunar === */}
+      {isLunarHome && (
+        <>
+          <TopNav stations={NAV_STATIONS} onNavTarget={handleNavTarget} /> {/* ⬅️ lien rétabli */}
+          {entered && <CursorTrail enabled onlyOnSelector=".top-nav-glass" />}
+        </>
+      )}
 
-      {/* Pages au-dessus du canvas, sous la TopNav */}
-      <div id="page-layer" data-active={!isHome}>
+      {/* === Layer Pages === */}
+      <div id="page-layer" data-active={!isLunarHome}>
         <Outlet />
       </div>
     </SettingsProvider>
   );
 }
+
 
 // Routes
 const router = createBrowserRouter([
@@ -104,12 +126,18 @@ const router = createBrowserRouter([
     path: "/",
     element: <Root />,
     children: [
-      { index: true, element: <></> },
-      { path: "BTS", element: <BTS /> },
-      { path: "Competences", element: <Competences /> },
-      { path: "Contact", element: <Contact /> },
-      { path: "Parcours", element: <Parcours /> },
-      { path: "Projets", element: <Projets /> },
+      // ⬇️ Par défaut "/" rend ton portfolio classique
+      { index: true, element: <ClassicPortfolio /> },
+
+      // ⬇️ La "home 3D" est maintenant sur /lunar (Landing + MoonScene)
+      { path: "lunar", element: <></> },
+
+      // ⬇️ Tes autres pages (inchangées)
+      { path: "BTS", element: <BTS/> },
+      { path: "Competences", element: <Competences/> },
+      { path: "Contact", element: <Contact/> },
+      { path: "Parcours", element: <Parcours/> },
+      { path: "Projets", element: <Projets/> },
     ],
   },
 ]);

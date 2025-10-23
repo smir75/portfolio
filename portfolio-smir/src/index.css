@@ -1,3 +1,4 @@
+/* ===== Tailwind ===== */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,27 +11,31 @@
   src: url("/fonts/Orbitron-SemiBold.woff2") format("woff2");
   font-weight: 600;
   font-style: normal;
+  font-display: swap;
 }
 @font-face {
   font-family: "InterLocal";
   src: url("/fonts/Inter-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
+  font-display: swap;
 }
 
 /* =========================
-   Variables CSS optimisées
+   Variables CSS
    ========================= */
 :root {
-  --space-bg: #0b1220;
-  --space-bg-2: #0a1020;
+  --space-bg: #0a0e27;
+  --space-bg-2: #0a1220;
   --text-main: #e2e8f0;
+
   --glass-border: rgba(51, 65, 85, 0.5);
   --glass-from: rgba(15, 23, 42, 0.85);
   --glass-to: rgba(2, 6, 23, 0.85);
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-cubic: cubic-bezier(0.4, 0, 0.2, 1);
+
   --transition-fast: 200ms;
   --transition-normal: 300ms;
   --transition-slow: 500ms;
@@ -41,7 +46,7 @@
 }
 
 /* =========================
-   Reset et base optimisés
+   Reset & base
    ========================= */
 html {
   box-sizing: border-box;
@@ -62,19 +67,20 @@ body,
   padding: 0;
 }
 
-/* ====== body ====== */
+/* ===== body ===== */
 body {
-  background: var(--space-bg);
+  /* direction valide */
+  background: linear-gradient(to bottom right, #0a0e27, #1a0f3d, #0d1a2e);
   color: var(--text-main);
-  overflow: hidden; /* le scroll se fait sur #page-layer */
+  overflow: auto; /* on laisse scroller la page */
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
 
   font-family: "InterLocal", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-display: swap;
+
   font-synthesis: none;
-  font-variant-ligatures: none; /* évite les tables OpenType avancées */
+  font-variant-ligatures: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeSpeed;
@@ -82,38 +88,31 @@ body {
   -webkit-tap-highlight-color: transparent;
   touch-action: pan-x pan-y;
 
-  contain: layout style;
+  /* on évite le containment sur body (peut casser layout/paint) */
+  /* contain: layout style; */
 }
 
 /* =========================
-   Typography optimisée
+   Typo
    ========================= */
 h1,
 h2,
 h3,
 .font-orbitron {
-  font-family: "OrbitronLocal", "InterLocal", -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-display: swap;
-  letter-spacing: 0.02em;
-  font-weight: 600;
-  line-height: 1.2;
-  margin: 0;
-  contain: layout style;
+  font-family: "Orbitron", "Inter", system-ui, sans-serif;
 }
 
 /* =========================
-   Layer pages (au-dessus du canvas)
+   Layer pages
    ========================= */
 #page-layer {
   position: fixed;
   inset: 0;
-  z-index: 120; /* au-dessus du canvas (scene-layer: 50) */
-  overflow: auto; /* scroll des pages internes */
-  pointer-events: auto;
-  display: none; /* caché sur la home */
-  background: transparent;
+  z-index: 120;
   overflow: auto;
+  pointer-events: auto;
+  display: none;
+  background: transparent;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
@@ -230,10 +229,9 @@ h3,
   top: 12px;
   left: 12px;
   right: 12px;
-  z-index: 140; /* au-dessus des pages et du canvas */
+  z-index: 140;
   will-change: transform;
   transform: translateZ(0);
-  contain: layout style;
   isolation: isolate;
   border: 1px solid var(--glass-border);
   background: linear-gradient(
@@ -249,7 +247,7 @@ h3,
 }
 
 /* =========================
-   Boutons “verre”
+   Boutons "verre"
    ========================= */
 .btn-glass {
   position: relative;
@@ -265,7 +263,6 @@ h3,
   padding: 8px 12px;
   will-change: transform, box-shadow;
   transform: translateZ(0);
-  contain: layout style;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -329,174 +326,7 @@ h3,
 }
 
 /* =========================
-   Optimisations critiques
-   ========================= */
-.contain-strict {
-  contain: strict;
-}
-.contain-layout {
-  contain: layout style;
-}
-.render-optimize {
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-}
-.hardware-accelerate {
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
-}
-
-/* =========================
-   TopNav custom (glass + active)
-   ========================= */
-.nav-rail {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-wrap: wrap;
-  contain: layout style;
-}
-.brand-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 9999px;
-  border: 1px solid var(--glass-border);
-  background: linear-gradient(
-    180deg,
-    rgba(30, 41, 59, 0.6),
-    rgba(2, 6, 23, 0.6)
-  );
-  backdrop-filter: var(--blur-normal);
-  -webkit-backdrop-filter: var(--blur-normal);
-  transition: transform var(--transition-fast) var(--ease-in-out-cubic),
-    box-shadow var(--transition-fast) var(--ease-in-out-cubic);
-}
-.brand-chip:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-}
-.brand-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #60a5fa;
-  box-shadow: 0 0 12px #60a5fa88;
-}
-.brand-text {
-  letter-spacing: 0.06em;
-  font-weight: 600;
-  color: var(--text-main);
-}
-.brand-sub {
-  font-size: 12px;
-  opacity: 0.7;
-  letter-spacing: 0.04em;
-}
-
-.topnav-item {
-  position: relative;
-  border: 1px solid var(--glass-border);
-  border-radius: 9999px;
-  background: linear-gradient(
-    180deg,
-    rgba(30, 41, 59, 0.55),
-    rgba(2, 6, 23, 0.55)
-  );
-  backdrop-filter: var(--blur-normal);
-  -webkit-backdrop-filter: var(--blur-normal);
-  padding: 0;
-  overflow: hidden;
-  isolation: isolate;
-  transition: transform var(--transition-fast) var(--ease-in-out-cubic),
-    box-shadow var(--transition-fast) var(--ease-in-out-cubic),
-    background-color var(--transition-fast) ease-out;
-}
-.topnav-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-}
-.topnav-item:active {
-  transform: translateY(0);
-  transition-duration: 60ms;
-}
-
-.topnav-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-}
-.topnav-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-  background: rgba(148, 163, 184, 0.9);
-  box-shadow: 0 0 10px rgba(148, 163, 184, 0.55);
-  transform: translateZ(0);
-}
-.topnav-text {
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  color: var(--text-main);
-}
-
-/* underline animée + état actif */
-.topnav-underline {
-  pointer-events: none;
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 4px;
-  height: 2px;
-  border-radius: 2px;
-  background: linear-gradient(
-    90deg,
-    rgba(96, 165, 250, 0),
-    rgba(96, 165, 250, 0.85),
-    rgba(96, 165, 250, 0)
-  );
-  transform: scaleX(0.2);
-  opacity: 0;
-  transition: transform var(--transition-normal) var(--ease-out-expo),
-    opacity var(--transition-fast) ease-out;
-}
-.topnav-item:hover .topnav-underline {
-  transform: scaleX(1);
-  opacity: 0.9;
-}
-
-.topnav-item[data-active="true"] {
-  border-color: rgba(96, 165, 250, 0.5);
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.35),
-    0 10px 30px rgba(2, 132, 199, 0.25);
-}
-.topnav-item[data-active="true"] .topnav-dot {
-  background: #60a5fa;
-  box-shadow: 0 0 14px #60a5fa99;
-}
-.topnav-item[data-active="true"] .topnav-underline {
-  transform: scaleX(1);
-  opacity: 1;
-}
-
-@media (max-width: 768px) {
-  .nav-rail {
-    gap: 4px;
-  }
-  .topnav-pill {
-    padding: 7px 10px;
-  }
-  .topnav-text {
-    font-size: 12px;
-  }
-}
-
-/* =========================
-   Curseur fusée (robuste)
+   Curseur fusée (fun)
    ========================= */
 body,
 button,
@@ -507,25 +337,22 @@ a {
 }
 
 /* =========================
-   Page “verre” translucide
+   OVERRIDE page BTS — assagi
+   (on évite d’écraser Tailwind)
    ========================= */
 .page-glass {
-  margin: 72px auto 32px; /* passe sous la TopNav */
-  max-width: 1080px;
-  padding: 16px;
-  border-radius: 20px;
-  border: 1px solid var(--glass-border);
-  background: linear-gradient(
-    180deg,
-    rgba(15, 23, 42, 0.55),
-    rgba(2, 6, 23, 0.55)
-  );
-  backdrop-filter: var(--blur-heavy);
-  -webkit-backdrop-filter: var(--blur-heavy);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  margin: 0;
+  padding: 0;
+  border: none;
+  /* on NE touche PAS au background / backdrop ici */
+  box-shadow: none;
+  max-width: 100%;
+  border-radius: 0;
 }
 
-/* Accents holo */
+/* =========================
+   Accents holo
+   ========================= */
 .holo-title {
   letter-spacing: 0.08em;
 }
@@ -534,4 +361,72 @@ a {
   background: rgba(56, 189, 248, 0.08);
   color: #bff3ff;
   box-shadow: 0 0 20px rgba(56, 189, 248, 0.12);
+}
+
+@keyframes slow-pan {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1.02);
+  }
+  50% {
+    transform: translate3d(0, -1.5%, 0) scale(1.03);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.02);
+  }
+}
+.animate-slow-pan {
+  animation: slow-pan 18s ease-in-out infinite;
+}
+
+@keyframes bounce-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+.animate-bounce-slow {
+  animation: bounce-slow 2s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up 1.2s ease-out forwards;
+}
+
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+.snap-container {
+  height: 100svh; /* meilleur que 100vh sur mobile */
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
+}
+:root {
+  --topnav-h: 0px;
 }
