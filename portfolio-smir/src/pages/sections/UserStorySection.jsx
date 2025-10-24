@@ -79,9 +79,10 @@ export default function UserStorySection() {
       className="min-h-[100svh] snap-center text-slate-100 relative overflow-hidden"
       style={{
         background:
-          "radial-gradient(60% 60% at 30% 15%, rgba(212,175,55,.08), transparent 62%)," +
-          "radial-gradient(40% 40% at 80% 85%, rgba(147,51,234,.06), transparent 62%), " +
-          THEME.bg,
+        "radial-gradient(60% 60% at 30% 15%, rgba(212,175,55,.05), transparent 62%)," +
+        "radial-gradient(40% 40% at 80% 85%, rgba(147,51,234,.04), transparent 62%), rgba(8,12,24,0.25)",
+        backdropFilter: "blur(2px)",
+        borderTop: "1px solid rgba(255,255,255,0.05)",
         padding: `${(INV * PHI) * PHI}rem ${1.0 * PHI}rem`,
       }}
     >
