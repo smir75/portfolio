@@ -11,22 +11,20 @@ export default function TopNav({ stations = [] }) {
     (id) => {
       dbg("TopNav click", { id, from: pathname });
 
-      // 1) Si on n'est pas sur la Home, on ferme la page en cours
-      //    en revenant sur "/" pour voir la planète derrière.
-      if (pathname !== "/") {
+      const isOnLunar = pathname.startsWith("/lunar");
+      if (!isOnLunar || pathname !== "/lunar") {
         // Optionnel: stop/clear focus en cours (propre)
         try {
-          window.dispatchEvent(
-            new CustomEvent("saga-focus-station", { detail: { id: null } })
-          );
+          window.dispatchEvent(new CustomEvent("saga-focus-station", { detail: { id: null } }));
         } catch {}
 
-        navigate("/");
+
+        navigate("/lunar");
 
         // 2) Puis on queue l'ouverture à la frame suivante
         //    (la scène est visible, l'alignement démarre)
         requestAnimationFrame(() => {
-          dbg("TopNav → saga-open-station (queued after close)", { id });
+          dbg("TopNav → saga-open-station (queued after goto /lunar)", { id });
           window.dispatchEvent(
             new CustomEvent("saga-open-station", {
               detail: { id, timeout: 8000 },
@@ -35,7 +33,7 @@ export default function TopNav({ stations = [] }) {
         });
       } else {
         // Déjà sur la Home → pas besoin de fermer, on queue direct
-        dbg("TopNav → saga-open-station (direct)", { id });
+        dbg("TopNav → saga-open-station (direct on /lunar)", { id });
         window.dispatchEvent(
           new CustomEvent("saga-open-station", { detail: { id, timeout: 8000 } })
         );
@@ -63,7 +61,6 @@ export default function TopNav({ stations = [] }) {
               title={`Aller à ${s.label}`}
               className="topnav-item"
               data-active={
-                // état actif visuel si la route correspond (confort)
                 (pathname === "/Projets"     && s.id === "projets")     ||
                 (pathname === "/Competences" && s.id === "competences") ||
                 (pathname === "/Parcours"    && s.id === "parcours")    ||

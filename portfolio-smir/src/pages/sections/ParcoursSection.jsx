@@ -203,7 +203,7 @@ export default function ParcoursSection() {
   return (
     <section
       id="parcours"
-      className="min-h-screen snap-center bg-[#0a0f1c] text-slate-100 py-12 px-4 overflow-y-auto"
+      className="min-h-[100svh] text-slate-100 flex items-center snap-center bg-[rgba(8,12,24,0.35)] backdrop-blur-[2px] border-t border-white/5"
     >
       <div className="w-full max-w-6xl mx-auto">
         {/* titre */}

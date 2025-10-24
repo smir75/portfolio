@@ -1,27 +1,20 @@
-// src/App.jsx
 import React, { useEffect, useState, Suspense, lazy, useCallback } from "react";
-import {
-  RouterProvider,
-  createBrowserRouter,
-  Outlet,
-  useNavigate,
-  useLocation,
-} from "react-router-dom";
+import { RouterProvider, createBrowserRouter, Outlet, useNavigate, useLocation} from "react-router-dom";
 import { SettingsProvider } from "./state/settings.jsx";
 
 import Landing from "./scene/Landing.jsx";
-
-// Pages
 import BTS from "./pages/BTS.jsx";
 import Competences from "./pages/Competences.jsx";
 import Contact from "./pages/Contact.jsx";
 import Parcours from "./pages/Parcours.jsx";
 import Projets from "./pages/Projets.jsx";
-import ClassicPortfolio from "./pages/ClassicPortfolio.jsx"; // ⬅️ new
+import ClassicPortfolio from "./pages/ClassicPortfolio.jsx"; 
 
-// UI
+
+
 import CursorTrail from "./scenes/ui/CursorTrail.jsx";
 import TopNav from "./scenes/ui/TopNav.jsx";
+import StarfieldBackdrop from "./components/StarfieldBackdrop.jsx";
 
 // Scène 3D (lazy)
 const MoonScene = lazy(() => import("./scene/MoonScene.jsx"));
@@ -75,6 +68,8 @@ function Root() {
 
   return (
     <SettingsProvider>
+      {/* 🌌 Starfield global — désactivé sur /lunar */}
+      {!isLunarHome && <StarfieldBackdrop density={8000} />}
       {/* === Landing === */}
       {!entered && isLunarHome && <Landing onEnter={() => setEntered(true)} />}
 

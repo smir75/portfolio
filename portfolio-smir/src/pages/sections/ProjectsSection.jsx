@@ -1,292 +1,280 @@
-import React, { useState, useMemo } from "react";
+// src/pages/sections/ProjectsSection.jsx
+import React, { useState, useMemo, useCallback } from "react";
 
-function Icon({ name, className = "inline-block w-5 h-5 mr-2 align-middle" }) {
-  switch (name) {
-    case "react":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M12 2v20M2 12h20" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      );
-    case "node":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M3 12v6l9 4 9-4v-6" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      );
-    case "linux":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <circle cx="12" cy="12" r="9" strokeWidth="1.5" />
-        </svg>
-      );
-    case "virtualbox":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <rect x="3" y="6" width="18" height="12" rx="2" strokeWidth="1.5" />
-        </svg>
-      );
-    case "vmware":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M4 7h16v10H4z" strokeWidth="1.5" />
-        </svg>
-      );
-    case "sql":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M4 6h16M4 12h16M4 18h16" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      );
-    case "windows":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M3 6l8-2v8l-8 2V6zM13 4l8-2v8l-8 2V4z" strokeWidth="1.2" />
-        </svg>
-      );
-    case "kali":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M12 3c4 0 7 3 9 6-2 3-5 6-9 6s-7-3-9-6c2-3 5-6 9-6z" strokeWidth="1.2" />
-        </svg>
-      );
-    case "git":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M3 12l6-6 12 12-6 6z" strokeWidth="1.2" />
-        </svg>
-      );
-    default:
-      return <span className={className} />;
-  }
-}
+/* ============================
+   Constantes “nombre d’or”
+   ============================ */
+const PHI = 1.618;           // φ
+const INV = 1 / PHI;         // ≈ 0.618
+const INV2 = INV * INV;      // ≈ 0.382
 
-/* ------------------------------
-   Projects data (MOST RECENT FIRST)
-   Primary category: "entreprise" | "scolaire" | "autodidacte"
-   ------------------------------ */
+/* ============================
+   Données projets (tes valeurs)
+   ============================ */
 const PROJECTS = [
   {
     id: "cpms",
-    title: "Intranet CPMS — changement de mot de passe WAD ↔ AS400",
-    short: "Module d’entreprise pour gérer les changements de mdp depuis le poste client jusqu’à l’AS400.",
+    title: "Intranet CPMS",
+    date: "2025",
+    description: "Module changement de mot de passe WAD ↔ AS400",
     detail:
-      "Conception et dev d’un flux sécurisé : poste client → intranet → WAD → AS400. Authent, logging, retries et monitoring. Intégration AD/LDAP.",
-    tools: ["node", "react", "git"],
+      "Flux sécurisé du poste client vers l'AS400. Authentification, logging, retries et monitoring. Intégration AD/LDAP.",
     category: "entreprise",
+    color: "#22d3ee",
+    docUrl: "#",
   },
   {
     id: "alafrenchcare",
     title: "alafrenchcare.com",
-    short: "Boutique e-commerce (auto-entreprise) — CBD cosmétiques.",
+    date: "2024",
+    description: "E-commerce CBD cosmétiques",
     detail:
-      "Shopify + automatisations (catalogue, webhooks, import/export produits). Packaging et mise en ligne du catalogue.",
-    tools: ["react", "git"],
+      "Shopify + automatisations (webhooks, catalogue). Packaging et mise en ligne complète. Gestion commandes.",
     category: "autodidacte",
+    color: "#f59e0b",
+    docUrl: "https://alafrenchcare.com",
   },
   {
     id: "alafrenchfr",
     title: "alafrench.fr",
-    short: "Site vitrine & marque personnelle.",
-    detail: "Site promo et blog, SEO basique, contact et formulaires.",
-    tools: ["react", "git"],
+    date: "2024",
+    description: "Site vitrine & marque personnelle",
+    detail:
+      "Portfolio et blog professionnel. SEO optimisé, formulaires de contact, design responsive moderne.",
     category: "autodidacte",
+    color: "#a855f7",
+    docUrl: "https://alafrench.fr",
   },
   {
     id: "portfolio",
-    title: "Portfolio personnel (Sagario)",
-    short: "Portfolio web 3D — React + Three.js (travail scolaire/pro).",
-    detail: "Project 3D interactif, optimisation WebGL, scènes modulaires, rigs caméra et shaders légers.",
-    tools: ["react"],
-    category: "entreprise", // classé pro / école — ici pro
+    title: "Portfolio 3D",
+    date: "2024",
+    description: "React + Three.js interactif",
+    detail:
+      "Expérience 3D immersive. Optimisation WebGL, scènes modulaires, animations fluides et shaders personnalisés.",
+    category: "entreprise",
+    color: "#10b981",
+    docUrl: "#",
   },
   {
     id: "flipper",
-    title: "Flipper Zero — dev & pentest",
-    short: "Dév et expérimentations (radio, scripts, pentest hardware).",
-    detail: "Dev de scripts, émulations RFID, tests matériels et intégration dans routines pentest.",
-    tools: ["linux", "git"],
+    title: "Flipper Zero",
+    date: "2023–2024",
+    description: "Dev & pentest hardware",
+    detail:
+      "Scripts personnalisés, émulations RFID/NFC, tests matériels. Analyse de protocoles sans fil et pentest.",
     category: "autodidacte",
+    color: "#ef4444",
+    docUrl: "#",
   },
   {
     id: "dev_annonce",
-    title: "Projet Annonz (mini-LeBonCoin)",
-    short: "Site d’annonces : CRUD, recherche, messages, filtres.",
+    title: "Annonz",
+    date: "2024",
+    description: "Plateforme type LeBonCoin",
     detail:
-      "Livrable scolaire : plateforme d’annonces avec upload d’images, recherche full-text, user auth et modération.",
-    tools: ["node", "react", "sql"],
+      "Site d'annonces complet : CRUD, recherche full-text, upload images, auth utilisateur et modération.",
     category: "scolaire",
+    color: "#3b82f6",
+    docUrl: "#",
   },
   {
     id: "tp_sql",
     title: "TP Injection SQL",
-    short: "Exercice d’enseignement sur vulnérabilités SQLi.",
+    date: "2024",
+    description: "Sécurité & vulnérabilités",
     detail:
-      "TP de découverte des injections SQL, démonstration d’exploitation (paramétrage non-préparé) et mitigation (prepared statements, ORM).",
-    tools: ["sql", "windows"],
+      "Découverte SQLi, démonstration d'exploitation et mitigation. Prepared statements, ORM et bonnes pratiques.",
     category: "scolaire",
+    color: "#8b5cf6",
+    docUrl: "#",
   },
   {
     id: "linux_installs",
-    title: "Installation Linux — Kali / Ubuntu / Lubuntu",
-    short: "Installations multi-OS et post-install (drivers, partitionnement).",
-    detail: "Automatisation des ISO, partitions, configuration réseau et optimisation VM / bare-metal.",
-    tools: ["linux", "virtualbox"],
+    title: "Installations Linux",
+    date: "2023–2024",
+    description: "Kali / Ubuntu / Lubuntu",
+    detail:
+      "Automatisation ISO, partitionnement, config réseau. Optimisation VM et bare-metal, scripts de déploiement.",
     category: "scolaire",
+    color: "#14b8a6",
+    docUrl: "#",
   },
   {
     id: "bootable_keys",
-    title: "Clés bootables & bypass accessibilité",
-    short: "Création de clés bootables pour dépannage / bypass d’accès (cours).",
-    detail: "Réalisation d’outils de secours sur clé USB pour restauration et diagnostics (Windows/Linux).",
-    tools: ["windows", "linux"],
+    title: "Clés bootables",
+    date: "2023",
+    description: "Dépannage & outils de secours",
+    detail:
+      "Création de clés USB bootables pour restauration système. Environnements de récupération Windows/Linux.",
     category: "scolaire",
+    color: "#eab308",
+    docUrl: "#",
   },
   {
     id: "win_server",
-    title: "Windows Server 2022 — gestion de parc",
-    short: "Mise en place d’un serveur central pour gestion de parc (scolarité).",
-    detail: "AD, GPO, déploiement d’images, gestion updates et monitoring basique.",
-    tools: ["windows"],
+    title: "Windows Server 2022",
+    date: "2023",
+    description: "Gestion de parc informatique",
+    detail:
+      "Active Directory, GPO, déploiement d'images. Gestion centralisée des updates, monitoring et sécurité.",
     category: "scolaire",
+    color: "#06b6d4",
+    docUrl: "#",
   },
   {
     id: "virtual_vm",
-    title: "VirtualBox & VMware — multi-OS",
-    short: "Install sur Win11 / mac / Linux — gestion VMs et snapshots.",
-    detail: "Compatibilité hôte/guest, bridged/NAT, optimisation disque et backup des VM.",
-    tools: ["virtualbox", "vmware"],
+    title: "VirtualBox & VMware",
+    date: "2023",
+    description: "Virtualisation multi-OS",
+    detail:
+      "Gestion VMs et snapshots. Configuration réseau (bridged/NAT), optimisation disque et système de backup.",
     category: "scolaire",
+    color: "#6366f1",
+    docUrl: "#",
   },
 ];
 
-/* ------------------------------
-   Colors for category badges
-   ------------------------------ */
+/* ============================
+   Badges catégories
+   ============================ */
 const CATEGORY_META = {
-  all: { label: "Tous", color: "bg-slate-600" },
-  scolaire: { label: "Scolaire", color: "bg-blue-600" },
-  entreprise: { label: "Entreprise", color: "bg-green-600" },
-  autodidacte: { label: "Autodidacte", color: "bg-amber-600" },
+  all: { label: "Tous", color: "#64748b" },
+  scolaire: { label: "Scolaire", color: "#3b82f6" },
+  entreprise: { label: "Entreprise", color: "#10b981" },
+  autodidacte: { label: "Autodidacte", color: "#f59e0b" },
 };
 
-/* ------------------------------
-   Card component (flip)
-   - keep size restrained
-   ------------------------------ */
+/* ============================
+   Carte projet (flip + a11y)
+   ============================ */
 function ProjectCard({ p }) {
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  const toggle = useCallback(() => setIsFlipped((v) => !v), []);
+  const onKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggle();
+      }
+    },
+    [toggle]
+  );
+
   return (
-    <div className="w-full p-2 sm:w-1/2 lg:w-1/3">
-      <div className="relative perspective-1000">
-        {/* container taille fixe pour uniformité */}
-        <div className="w-full h-44 md:h-48 lg:h-44">
-          <input id={`flip-${p.id}`} type="checkbox" className="hidden peer" />
-          <label
-            htmlFor={`flip-${p.id}`}
-            className="block w-full h-full cursor-pointer"
-            aria-hidden="false"
-            title="Clique pour retourner"
+    <div className="w-full">
+      <div
+        className="relative h-[12.5rem] cursor-pointer select-none"
+        style={{
+          perspective: `${62 * INV}rem`, // ≈ 38rem
+        }}
+        onClick={toggle}
+        onKeyDown={onKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-pressed={isFlipped}
+        aria-label={`${p.title} — ${isFlipped ? "détails" : "aperçu"}`}
+      >
+        <div
+          className={`relative w-full h-full transition-transform duration-[${Math.round(
+            380 * PHI
+          )}ms] [transform-style:preserve-3d] ${
+            isFlipped ? "[transform:rotateY(180deg)]" : ""
+          }`}
+        >
+          {/* Face avant */}
+          <div
+            className="absolute inset-0 rounded-[1.0rem] p-[0.9rem] border shadow-lg border-white/10 bg-slate-900/90 backdrop-blur-sm"
+            style={{
+              backfaceVisibility: "hidden",
+              WebkitBackfaceVisibility: "hidden",
+              boxShadow:
+                "0 0.618rem 1.618rem rgba(0,0,0,.35), inset 0 0 0 0.062rem rgba(212,175,55,.08)",
+            }}
           >
-            <div
-              className="relative w-full h-full transition-transform duration-500 transform-style-preserve-3d peer-checked:rotate-y-180"
-              style={{ WebkitTransformStyle: "preserve-3d", transformStyle: "preserve-3d" }}
-            >
-              {/* Front */}
-              <div
-                className="absolute inset-0 p-4 overflow-hidden border rounded-lg shadow-md backface-hidden border-slate-700 bg-gradient-to-br from-slate-900/80 to-slate-800/70"
-                style={{ WebkitBackfaceVisibility: "hidden", backfaceVisibility: "hidden" }}
-              >
-                <div className="flex items-start justify-between">
-                  <h3 className="text-sm font-bold leading-tight text-white md:text-base">{p.title}</h3>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full text-white ${CATEGORY_META[p.category].color}`}
-                    aria-hidden="true"
-                  >
-                    {CATEGORY_META[p.category].label}
-                  </span>
-                </div>
-
-                <p className="mt-2 text-xs text-slate-300 line-clamp-3">{p.short}</p>
-
-                <div className="absolute flex items-center justify-between bottom-3 left-4 right-4">
-                  <div className="flex items-center text-xs text-slate-300">
-                    {p.tools.slice(0, 4).map((t) => (
-                      <span key={t} className="flex items-center mr-2">
-                        <Icon name={t} />
-                        <span className="sr-only">{t}</span>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="text-xs italic text-slate-400">Clique pour +</div>
-                </div>
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between mb-[0.5rem]">
+                <span
+                  className="px-[0.618rem] py-[0.382rem] text-[0.7rem] font-bold text-white rounded-full"
+                  style={{ backgroundColor: CATEGORY_META[p.category].color }}
+                >
+                  {CATEGORY_META[p.category].label}
+                </span>
+                <span className="text-[0.75rem] font-medium text-slate-400">
+                  {p.date}
+                </span>
               </div>
 
-              {/* Back */}
-              <div
-                className="absolute inset-0 p-4 overflow-auto border rounded-lg shadow-lg rotate-y-180 backface-hidden border-slate-700 bg-slate-900/95"
+              <h3
+                className="mb-[0.382rem] font-extrabold leading-tight"
                 style={{
-                  WebkitBackfaceVisibility: "hidden",
-                  backfaceVisibility: "hidden",
-                  transform: "rotateY(180deg)",
+                  color: p.color,
+                  fontSize: `${1.0 * PHI}rem`, // ≈ 1.618rem
+                  lineHeight: 1.0 + INV2,
+                  fontFamily: "OrbitronLocal, Orbitron, system-ui, sans-serif",
                 }}
+                title={p.title}
               >
-                <div className="flex items-start justify-between">
-                  <h3 className="text-sm font-bold leading-tight text-white md:text-base">Détails</h3>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full text-white ${CATEGORY_META[p.category].color}`}
-                    aria-hidden="true"
-                  >
-                    {CATEGORY_META[p.category].label}
-                  </span>
-                </div>
+                {p.title}
+              </h3>
 
-                <p className="mt-2 text-xs text-slate-300">{p.detail}</p>
+              <p className="flex-1 text-[0.925rem] leading-relaxed text-slate-300">
+                {p.description}
+              </p>
 
-                <div className="absolute flex items-center justify-between bottom-3 left-4 right-4">
-                  <div className="text-xs text-slate-400">
-                    Outils: {p.tools.map((t) => t).join(" • ")}
-                  </div>
-                  <label
-                    htmlFor={`flip-${p.id}`}
-                    className="text-xs underline cursor-pointer text-amber-400"
-                    aria-hidden="true"
-                  >
-                    Fermer
-                  </label>
-                </div>
+              <div className="pt-[0.618rem] mt-auto border-t border-white/10">
+                <p className="text-[0.7rem] italic text-center text-slate-500">
+                  Cliquer / Entrée pour détails →
+                </p>
               </div>
             </div>
-          </label>
+          </div>
+
+          {/* Face arrière */}
+          <div
+            className="absolute inset-0 rounded-[1.0rem] p-[0.9rem] border shadow-lg bg-slate-800/95 backdrop-blur-sm [transform:rotateY(180deg)]"
+            style={{
+              backfaceVisibility: "hidden",
+              WebkitBackfaceVisibility: "hidden",
+              borderColor: p.color,
+            }}
+          >
+            <div className="flex flex-col h-full">
+              <h4
+                className="mb-[0.6rem] font-bold"
+                style={{ color: p.color, fontSize: `${1.0}rem` }}
+              >
+                Détails
+              </h4>
+
+              <p className="flex-1 overflow-y-auto text-[0.85rem] leading-relaxed text-slate-300">
+                {p.detail}
+              </p>
+
+              <div className="pt-[0.618rem] mt-[0.618rem] border-t border-white/10">
+                <a
+                  href={p.docUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="block w-full py-[0.6rem] text-[0.8rem] font-bold text-center text-white transition-transform rounded-lg hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-white/40"
+                  style={{ backgroundColor: p.color }}
+                >
+                  📄 Documentation
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
-      <style jsx>{`
-       
-        .perspective-1000 {
-          perspective: 1000px;
-        }
-        .transform-style-preserve-3d {
-          transform-style: preserve-3d;
-        }
-        .backface-hidden {
-          -webkit-backface-visibility: hidden;
-          backface-visibility: hidden;
-        }
-        .rotate-y-180 {
-          transform: rotateY(180deg);
-        }
-        .peer-checked\\:rotate-y-180:checked ~ .rotate-y-180 {
-          transform: rotateY(180deg);
-        }
-        
-      `}</style>
     </div>
   );
 }
 
-/* ------------------------------
-   Main section
-   ------------------------------ */
+/* ============================
+   Section
+   ============================ */
 export default function ProjectsSection() {
   const [filter, setFilter] = useState("all");
 
@@ -296,36 +284,71 @@ export default function ProjectsSection() {
   }, [filter]);
 
   return (
-    <section  id="projets"  className="snap-center min-h-screen flex flex-col justify-center py-12 px-4 bg-[#050712] text-slate100" >
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-extrabold md:text-3xl">Projets</h2>
-            <p className="text-sm text-slate-400">Chronologie (récent → ancien). Clique sur une carte pour tourner.</p>
-          </div>
-
-          {/* Filters */}
-          <div className="flex items-center gap-2">
-            {Object.entries(CATEGORY_META).map(([k, meta]) => (
-              <button
-                key={k}
-                onClick={() => setFilter(k)}
-                className={`text-xs px-3 py-1 rounded-full font-semibold transition ${filter === k ? "scale-105 ring-2 ring-white/20" : "opacity-80"} ${meta.color}`}
-              >
-                {meta.label}
-              </button>
-            ))}
-          </div>
+    <section
+      id="projets"
+      className="flex flex-col justify-center min-h-screen px-4 py-12 snap-center text-slate-100 bg-[rgba(8,12,24,0.3)] backdrop-blur-[2px] border-t border-white/5"
+      style={{
+        ["--phi"]: PHI,
+        background:
+        "radial-gradient(60% 60% at 30% 20%, rgba(212,175,55,.08), transparent 62%), radial-gradient(40% 40% at 80% 70%, rgba(164,29,40,.06), transparent 62%)",
+      }}
+    >
+      <div
+        className="w-full mx-auto"
+        style={{
+          maxWidth: `${56 * PHI}rem`,
+          padding: `${(INV * PHI) * PHI}rem ${1.0 * PHI}rem`, // ≈ 1.0*φ² vertical, φ horizontal
+        }}
+      >
+        {/* Header */}
+        <div className="mb-[1.0rem] text-center">
+          <h2
+            className="mb-[0.6rem] font-extrabold tracking-tight"
+            style={{
+              fontFamily: "OrbitronLocal, Orbitron, system-ui, sans-serif",
+              color: "#e2e8f0",
+              fontSize: `${1.618 * PHI}rem`, // ≈ 2.618rem
+              lineHeight: 1.0 + INV, // ≈ 1.618
+            }}
+          >
+            Projets
+          </h2>
+          <div className="mx-auto w-[6.18rem] h-[0.236rem] rounded-full bg-gradient-to-r from-cyan-400 via-purple-400 to-orange-400" />
         </div>
 
-        {/* Grid: cards wrap to next line */}
-        <div className="flex flex-wrap -m-2">
+        {/* Filtres */}
+        <div className="flex flex-wrap items-center justify-center gap-[0.5rem] mb-[1.0rem]">
+          {Object.entries(CATEGORY_META).map(([k, meta]) => (
+            <button
+              key={k}
+              onClick={() => setFilter(k)}
+              className={`px-[1.0rem] py-[0.6rem] rounded-full font-bold text-white text-[0.8rem] transition-all focus:outline-none ${
+                filter === k
+                  ? "scale-105 ring-2 ring-white/30 shadow-lg"
+                  : "opacity-80 hover:opacity-100"
+              }`}
+              style={{ backgroundColor: meta.color }}
+              aria-pressed={filter === k}
+            >
+              {meta.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Grille compacte (4 → 3 → 2 → 1) */}
+        <div className="grid gap-[0.9rem] grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {filtered.map((p) => (
             <ProjectCard key={p.id} p={p} />
           ))}
         </div>
 
-        <div className="mt-6 text-xs italic text-slate-500"> La liste est encore en construction.</div>
+        {/* Footer */}
+        <div className="mt-[1.0rem] text-center">
+          <p className="text-[0.75rem] italic text-slate-500">
+            {filtered.length} projet{filtered.length > 1 ? "s" : ""} • Cliquez ou pressez Entrée pour
+            retourner la carte
+          </p>
+        </div>
       </div>
     </section>
   );

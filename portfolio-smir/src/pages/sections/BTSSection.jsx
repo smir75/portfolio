@@ -4,7 +4,8 @@ export default function BTSSection() {
   return (
     <section
     id="bts"
-    className="min-h-[100svh] bg-gradient-to-b from-[#0b1020] to-[#0a0f1c] text-slate-100 flex items-center snap-center"
+    className="min-h-[100svh] text-slate-100 flex items-center snap-center bg-[rgba(8,12,24,0.35)] backdrop-blur-[2px] border-t border-white/5"
+
     >
       <div className="container px-6 py-16 mx-auto">
         {/* Titre */}
